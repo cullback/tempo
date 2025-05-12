@@ -1,4 +1,4 @@
-use pest::Span;
+use pest::{Span, iterators::Pair};
 
 // AST Node types
 #[derive(Debug)]
@@ -66,4 +66,15 @@ pub struct Block<'a> {
     pub assignments: Vec<Assignment<'a>>,
     pub expression: Box<Expression<'a>>,
     pub span: Span<'a>,
+}
+
+fn parse_identifier<'a>(pair: Pair<'a, crate::Rule>) -> Result<Identifier<'a>, String> {
+    if pair.as_rule() != crate::Rule::identifier {
+        return Err(format!("Expected identifier, got {:?}", pair.as_rule()));
+    }
+
+    Ok(Identifier {
+        name: pair.as_str().to_string(),
+        span: pair.as_span(),
+    })
 }
