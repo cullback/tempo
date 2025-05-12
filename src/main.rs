@@ -16,5 +16,5 @@ fn main() {
 
     let ast = parse_program(pairs);
 
-    println!("{ast:?}");
+    println!("{ast:#?}");
 }

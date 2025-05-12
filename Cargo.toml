@@ -6,4 +6,7 @@ edition = "2024"
 [dependencies]
 pest = "2.8.0"
 pest_derive = "2.8.0"
-
+cranelift = "0.118.0"
+cranelift-module = "0.118.0"
+cranelift-jit = "0.118.0"
+cranelift-native = "0.118.0"
