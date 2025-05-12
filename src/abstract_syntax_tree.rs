@@ -1,4 +1,7 @@
-use pest::{iterators::Pair, Span};
+use pest::{
+    Span,
+    iterators::{Pair, Pairs},
+};
 
 // AST Node types
 #[derive(Debug)]
@@ -70,7 +73,7 @@ pub struct Block<'a> {
 
 // Helper to extract the next inner pair or return an error
 fn next_inner_or_err<'a>(
-    mut pairs: pest::iterators::Pairs<'a, crate::Rule>,
+    pairs: &mut pest::iterators::Pairs<'a, crate::Rule>,
     expected_rule_name: &str,
 ) -> Result<Pair<'a, crate::Rule>, String> {
     pairs
@@ -159,7 +162,10 @@ fn parse_function_definition<'a>(
     let fn_def_span = pair.as_span();
     let mut inner_pairs = pair.into_inner();
 
-    let params_list_pair = next_inner_or_err(inner_pairs.by_ref(), "function_definition parameters (ident_list)")?;
+    let params_list_pair = next_inner_or_err(
+        inner_pairs.by_ref(),
+        "function_definition parameters (ident_list)",
+    )?;
     if params_list_pair.as_rule() != crate::Rule::ident_list {
         return Err(format!(
             "Expected ident_list for parameters, got {:?}",
@@ -171,7 +177,8 @@ fn parse_function_definition<'a>(
         parameters.push(parse_identifier(ident_pair)?);
     }
 
-    let body_expr_pair = next_inner_or_err(inner_pairs.by_ref(), "function_definition body expression")?;
+    let body_expr_pair =
+        next_inner_or_err(inner_pairs.by_ref(), "function_definition body expression")?;
     let body = parse_expression(body_expr_pair)?;
 
     Ok(FunctionDefinition {
@@ -235,9 +242,9 @@ pub fn parse_expression<'a>(pair: Pair<'a, crate::Rule>) -> Result<Expression<'a
     match inner_expr_pair.as_rule() {
         crate::Rule::number => Ok(Expression::Number(parse_number(inner_expr_pair)?)),
         crate::Rule::identifier => Ok(Expression::Identifier(parse_identifier(inner_expr_pair)?)),
-        crate::Rule::function_call => {
-            Ok(Expression::FunctionCall(parse_function_call(inner_expr_pair)?))
-        }
+        crate::Rule::function_call => Ok(Expression::FunctionCall(parse_function_call(
+            inner_expr_pair,
+        )?)),
         crate::Rule::function_definition => Ok(Expression::FunctionDefinition(
             parse_function_definition(inner_expr_pair)?,
         )),
@@ -274,35 +281,25 @@ fn parse_assignment<'a>(pair: Pair<'a, crate::Rule>) -> Result<Assignment<'a>, S
     })
 }
 
-pub fn parse_program<'a>(pair: Pair<'a, crate::Rule>) -> Result<Program<'a>, String> {
-    if pair.as_rule() != crate::Rule::program {
-        return Err(format!(
-            "Expected program, got {:?} for \"{}\"",
-            pair.as_rule(),
-            pair.as_str()
-        ));
-    }
-    let program_span = pair.as_span();
+pub fn parse_program<'a>(pairs: Pairs<'a, crate::Rule>) -> Result<Program<'a>, String> {
     let mut assignments = Vec::new();
-
-    for inner_pair in pair.into_inner() {
-        // The 'program' rule in grammar is `SOI ~ assignment* ~ EOI`.
-        // `into_inner()` gives us the `assignment`s. EOI and SOI are silent.
-        if inner_pair.as_rule() == crate::Rule::assignment {
-            assignments.push(parse_assignment(inner_pair)?);
+    for pair in pairs {
+        if pair.as_rule() == crate::Rule::assignment {
+            assignments.push(parse_assignment(pair)?);
+        } else if pair.as_rule() == crate::Rule::EOI {
         } else {
             // This case should ideally not be reached if grammar is correct
             // and pest only provides significant inner rules.
             return Err(format!(
                 "Unexpected rule {:?} inside program for \"{}\"",
-                inner_pair.as_rule(),
-                inner_pair.as_str()
+                pair.as_rule(),
+                pair.as_str()
             ));
         }
     }
 
     Ok(Program {
         assignments,
-        span: program_span,
+        span: Span::new("", 0, 0).unwrap(),
     })
 }
