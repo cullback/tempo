@@ -1,3 +1,5 @@
+use pest::Span;
+
 // AST Node types
 #[derive(Debug)]
 pub enum AstNode<'a> {
