@@ -16,15 +16,15 @@ expression = {
 }
 
 function_arguments = { expression ~ ("," ~ expression)* }
-// Updated: function_arguments is now optional in a function_call
-function_call      = { identifier ~ "(" ~ function_arguments? ~ ")" }
+function_call      = { identifier ~ "(" ~ function_arguments ~ ")" }
 
 block = { "{" ~ assignment* ~ expression ~ "}" }
 
 ident_list          = { identifier ~ ("," ~ identifier)* }
-// Updated: ident_list is now optional in a function_definition
-function_definition = { "|" ~ ident_list? ~ "|" ~ expression }
+function_definition = { "|" ~ ident_list ~ "|" ~ expression }
 
 assignment = { identifier ~ "=" ~ expression }
 
 program = _{ SOI ~ (assignment)* ~ EOI }
+
+

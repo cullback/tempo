@@ -1,6 +1,17 @@
 use pest::Span;
 
-// AST Node types (AstNode enum removed as specific structs are used directly)
+// AST Node types
+#[derive(Debug)]
+pub enum AstNode<'a> {
+    Program(Program<'a>),
+    Assignment(Assignment<'a>),
+    Expression(Expression<'a>),
+    Identifier(Identifier<'a>),
+    Number(Number<'a>),
+    FunctionCall(FunctionCall<'a>),
+    FunctionDefinition(FunctionDefinition<'a>),
+    Block(Block<'a>),
+}
 
 #[derive(Debug)]
 pub struct Program<'a> {
