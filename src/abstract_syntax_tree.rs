@@ -126,10 +126,10 @@ fn parse_function_call<'a>(pair: Pair<'a, crate::Rule>) -> Result<FunctionCall<'
     let fn_call_span = pair.as_span();
     let mut inner_pairs = pair.into_inner();
 
-    let ident_pair = next_inner_or_err(inner_pairs.by_ref(), "function_call identifier")?;
+    let ident_pair = next_inner_or_err(&mut inner_pairs, "function_call identifier")?;
     let function_name = parse_identifier(ident_pair)?;
 
-    let args_pair = next_inner_or_err(inner_pairs.by_ref(), "function_call arguments")?;
+    let args_pair = next_inner_or_err(&mut inner_pairs, "function_call arguments")?;
     if args_pair.as_rule() != crate::Rule::function_arguments {
         return Err(format!(
             "Expected function_arguments, got {:?}",
@@ -163,7 +163,7 @@ fn parse_function_definition<'a>(
     let mut inner_pairs = pair.into_inner();
 
     let params_list_pair = next_inner_or_err(
-        inner_pairs.by_ref(),
+        &mut inner_pairs,
         "function_definition parameters (ident_list)",
     )?;
     if params_list_pair.as_rule() != crate::Rule::ident_list {
@@ -178,7 +178,7 @@ fn parse_function_definition<'a>(
     }
 
     let body_expr_pair =
-        next_inner_or_err(inner_pairs.by_ref(), "function_definition body expression")?;
+        next_inner_or_err(&mut inner_pairs, "function_definition body expression")?;
     let body = parse_expression(body_expr_pair)?;
 
     Ok(FunctionDefinition {
@@ -268,10 +268,10 @@ fn parse_assignment<'a>(pair: Pair<'a, crate::Rule>) -> Result<Assignment<'a>, S
     let assignment_span = pair.as_span();
     let mut inner_pairs = pair.into_inner();
 
-    let ident_pair = next_inner_or_err(inner_pairs.by_ref(), "assignment identifier")?;
+    let ident_pair = next_inner_or_err(&mut inner_pairs, "assignment identifier")?;
     let identifier = parse_identifier(ident_pair)?;
 
-    let expr_pair = next_inner_or_err(inner_pairs.by_ref(), "assignment expression")?;
+    let expr_pair = next_inner_or_err(&mut inner_pairs, "assignment expression")?;
     let expression = parse_expression(expr_pair)?;
 
     Ok(Assignment {
@@ -281,25 +281,51 @@ fn parse_assignment<'a>(pair: Pair<'a, crate::Rule>) -> Result<Assignment<'a>, S
     })
 }
 
-pub fn parse_program<'a>(pairs: Pairs<'a, crate::Rule>) -> Result<Program<'a>, String> {
+pub fn parse_program<'a>(mut program_level_pairs: Pairs<'a, crate::Rule>) -> Result<Program<'a>, String> {
+    // When parsing Rule::program, Pest returns a Pairs iterator that should yield
+    // exactly one Pair, corresponding to the 'program' rule itself.
+    let program_pair = program_level_pairs.next()
+        .ok_or_else(|| "Expected a program pair from parser, but found none.".to_string())?;
+
+    // Validate that this pair is indeed for the 'program' rule.
+    if program_pair.as_rule() != crate::Rule::program {
+        return Err(format!(
+            "Expected top-level pair to be Rule::program, but got {:?} for \"{}\"",
+            program_pair.as_rule(),
+            program_pair.as_str()
+        ));
+    }
+
+    // Ensure there are no other sibling pairs at this top level.
+    if program_level_pairs.next().is_some() {
+        return Err("Expected only one top-level program pair, but found more. This indicates an issue with the parser or grammar.".to_string());
+    }
+
+    // The span of the 'program_pair' is the span of the entire program.
+    let program_span = program_pair.as_span();
+
     let mut assignments = Vec::new();
-    for pair in pairs {
-        if pair.as_rule() == crate::Rule::assignment {
-            assignments.push(parse_assignment(pair)?);
-        } else if pair.as_rule() == crate::Rule::EOI {
+    // The `program` rule is `SOI ~ (assignment)* ~ EOI`.
+    // `SOI` and `EOI` are silent (`_`).
+    // `program_pair.into_inner()` will yield the sequence of `assignment` pairs.
+    for inner_pair in program_pair.into_inner() {
+        // Each inner_pair must be an assignment.
+        if inner_pair.as_rule() == crate::Rule::assignment {
+            assignments.push(parse_assignment(inner_pair)?);
         } else {
-            // This case should ideally not be reached if grammar is correct
-            // and pest only provides significant inner rules.
+            // This case should not be reached if the grammar is correctly defined
+            // and Pest processes it as expected, as only 'assignment' rules are
+            // non-silent children of 'program'.
             return Err(format!(
-                "Unexpected rule {:?} inside program for \"{}\"",
-                pair.as_rule(),
-                pair.as_str()
+                "Unexpected rule {:?} found inside program structure. Expected only assignments. Rule content: \"{}\"",
+                inner_pair.as_rule(),
+                inner_pair.as_str()
             ));
         }
     }
 
     Ok(Program {
         assignments,
-        span: Span::new("", 0, 0).unwrap(),
+        span: program_span, // Use the correct span for the entire program
     })
 }
