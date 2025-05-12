@@ -1,4 +1,4 @@
-use pest::{Span, iterators::Pair};
+use pest::{iterators::Pair, Span};
 
 // AST Node types
 #[derive(Debug)]
@@ -68,13 +68,241 @@ pub struct Block<'a> {
     pub span: Span<'a>,
 }
 
-fn parse_identifier<'a>(pair: Pair<'a, crate::Rule>) -> Result<Identifier<'a>, String> {
-    if pair.as_rule() != crate::Rule::identifier {
-        return Err(format!("Expected identifier, got {:?}", pair.as_rule()));
-    }
+// Helper to extract the next inner pair or return an error
+fn next_inner_or_err<'a>(
+    mut pairs: pest::iterators::Pairs<'a, crate::Rule>,
+    expected_rule_name: &str,
+) -> Result<Pair<'a, crate::Rule>, String> {
+    pairs
+        .next()
+        .ok_or_else(|| format!("Expected {} but found nothing", expected_rule_name))
+}
 
+// Parsing functions
+
+pub fn parse_identifier<'a>(pair: Pair<'a, crate::Rule>) -> Result<Identifier<'a>, String> {
+    if pair.as_rule() != crate::Rule::identifier {
+        return Err(format!(
+            "Expected identifier, got {:?} for \"{}\"",
+            pair.as_rule(),
+            pair.as_str()
+        ));
+    }
     Ok(Identifier {
         name: pair.as_str().to_string(),
         span: pair.as_span(),
+    })
+}
+
+fn parse_number<'a>(pair: Pair<'a, crate::Rule>) -> Result<Number<'a>, String> {
+    if pair.as_rule() != crate::Rule::number {
+        return Err(format!(
+            "Expected number, got {:?} for \"{}\"",
+            pair.as_rule(),
+            pair.as_str()
+        ));
+    }
+    let value = pair
+        .as_str()
+        .parse::<i64>()
+        .map_err(|e| format!("Failed to parse number '{}': {}", pair.as_str(), e))?;
+    Ok(Number {
+        value,
+        span: pair.as_span(),
+    })
+}
+
+fn parse_function_call<'a>(pair: Pair<'a, crate::Rule>) -> Result<FunctionCall<'a>, String> {
+    if pair.as_rule() != crate::Rule::function_call {
+        return Err(format!(
+            "Expected function_call, got {:?} for \"{}\"",
+            pair.as_rule(),
+            pair.as_str()
+        ));
+    }
+    let fn_call_span = pair.as_span();
+    let mut inner_pairs = pair.into_inner();
+
+    let ident_pair = next_inner_or_err(inner_pairs.by_ref(), "function_call identifier")?;
+    let function_name = parse_identifier(ident_pair)?;
+
+    let args_pair = next_inner_or_err(inner_pairs.by_ref(), "function_call arguments")?;
+    if args_pair.as_rule() != crate::Rule::function_arguments {
+        return Err(format!(
+            "Expected function_arguments, got {:?}",
+            args_pair.as_rule()
+        ));
+    }
+
+    let mut arguments = Vec::new();
+    for arg_expr_pair in args_pair.into_inner() {
+        arguments.push(parse_expression(arg_expr_pair)?);
+    }
+
+    Ok(FunctionCall {
+        function_name,
+        arguments,
+        span: fn_call_span,
+    })
+}
+
+fn parse_function_definition<'a>(
+    pair: Pair<'a, crate::Rule>,
+) -> Result<FunctionDefinition<'a>, String> {
+    if pair.as_rule() != crate::Rule::function_definition {
+        return Err(format!(
+            "Expected function_definition, got {:?} for \"{}\"",
+            pair.as_rule(),
+            pair.as_str()
+        ));
+    }
+    let fn_def_span = pair.as_span();
+    let mut inner_pairs = pair.into_inner();
+
+    let params_list_pair = next_inner_or_err(inner_pairs.by_ref(), "function_definition parameters (ident_list)")?;
+    if params_list_pair.as_rule() != crate::Rule::ident_list {
+        return Err(format!(
+            "Expected ident_list for parameters, got {:?}",
+            params_list_pair.as_rule()
+        ));
+    }
+    let mut parameters = Vec::new();
+    for ident_pair in params_list_pair.into_inner() {
+        parameters.push(parse_identifier(ident_pair)?);
+    }
+
+    let body_expr_pair = next_inner_or_err(inner_pairs.by_ref(), "function_definition body expression")?;
+    let body = parse_expression(body_expr_pair)?;
+
+    Ok(FunctionDefinition {
+        parameters,
+        body: Box::new(body),
+        span: fn_def_span,
+    })
+}
+
+fn parse_block<'a>(pair: Pair<'a, crate::Rule>) -> Result<Block<'a>, String> {
+    if pair.as_rule() != crate::Rule::block {
+        return Err(format!(
+            "Expected block, got {:?} for \"{}\"",
+            pair.as_rule(),
+            pair.as_str()
+        ));
+    }
+    let block_span = pair.as_span();
+    let mut inner_pairs = pair.into_inner().peekable();
+    let mut assignments = Vec::new();
+
+    while let Some(peeked_pair) = inner_pairs.peek() {
+        if peeked_pair.as_rule() == crate::Rule::assignment {
+            let assignment_pair = inner_pairs.next().unwrap(); // Consume it
+            assignments.push(parse_assignment(assignment_pair)?);
+        } else {
+            break; // Next should be the expression
+        }
+    }
+
+    let expression_pair = inner_pairs
+        .next()
+        .ok_or_else(|| "Block: expected expression after assignments".to_string())?;
+    let expression = parse_expression(expression_pair)?;
+
+    if inner_pairs.next().is_some() {
+        return Err("Block: unexpected extra pairs after expression".to_string());
+    }
+
+    Ok(Block {
+        assignments,
+        expression: Box::new(expression),
+        span: block_span,
+    })
+}
+
+pub fn parse_expression<'a>(pair: Pair<'a, crate::Rule>) -> Result<Expression<'a>, String> {
+    if pair.as_rule() != crate::Rule::expression {
+        return Err(format!(
+            "Expected expression, got {:?} for \"{}\"",
+            pair.as_rule(),
+            pair.as_str()
+        ));
+    }
+    // An 'expression' rule always contains exactly one inner specific expression type.
+    let inner_expr_pair = pair
+        .into_inner()
+        .next()
+        .ok_or_else(|| "Expression rule was unexpectedly empty".to_string())?;
+
+    match inner_expr_pair.as_rule() {
+        crate::Rule::number => Ok(Expression::Number(parse_number(inner_expr_pair)?)),
+        crate::Rule::identifier => Ok(Expression::Identifier(parse_identifier(inner_expr_pair)?)),
+        crate::Rule::function_call => {
+            Ok(Expression::FunctionCall(parse_function_call(inner_expr_pair)?))
+        }
+        crate::Rule::function_definition => Ok(Expression::FunctionDefinition(
+            parse_function_definition(inner_expr_pair)?,
+        )),
+        crate::Rule::block => Ok(Expression::Block(parse_block(inner_expr_pair)?)),
+        _ => Err(format!(
+            "Unexpected rule {:?} inside expression for \"{}\"",
+            inner_expr_pair.as_rule(),
+            inner_expr_pair.as_str()
+        )),
+    }
+}
+
+fn parse_assignment<'a>(pair: Pair<'a, crate::Rule>) -> Result<Assignment<'a>, String> {
+    if pair.as_rule() != crate::Rule::assignment {
+        return Err(format!(
+            "Expected assignment, got {:?} for \"{}\"",
+            pair.as_rule(),
+            pair.as_str()
+        ));
+    }
+    let assignment_span = pair.as_span();
+    let mut inner_pairs = pair.into_inner();
+
+    let ident_pair = next_inner_or_err(inner_pairs.by_ref(), "assignment identifier")?;
+    let identifier = parse_identifier(ident_pair)?;
+
+    let expr_pair = next_inner_or_err(inner_pairs.by_ref(), "assignment expression")?;
+    let expression = parse_expression(expr_pair)?;
+
+    Ok(Assignment {
+        identifier,
+        expression: Box::new(expression),
+        span: assignment_span,
+    })
+}
+
+pub fn parse_program<'a>(pair: Pair<'a, crate::Rule>) -> Result<Program<'a>, String> {
+    if pair.as_rule() != crate::Rule::program {
+        return Err(format!(
+            "Expected program, got {:?} for \"{}\"",
+            pair.as_rule(),
+            pair.as_str()
+        ));
+    }
+    let program_span = pair.as_span();
+    let mut assignments = Vec::new();
+
+    for inner_pair in pair.into_inner() {
+        // The 'program' rule in grammar is `SOI ~ assignment* ~ EOI`.
+        // `into_inner()` gives us the `assignment`s. EOI and SOI are silent.
+        if inner_pair.as_rule() == crate::Rule::assignment {
+            assignments.push(parse_assignment(inner_pair)?);
+        } else {
+            // This case should ideally not be reached if grammar is correct
+            // and pest only provides significant inner rules.
+            return Err(format!(
+                "Unexpected rule {:?} inside program for \"{}\"",
+                inner_pair.as_rule(),
+                inner_pair.as_str()
+            ));
+        }
+    }
+
+    Ok(Program {
+        assignments,
+        span: program_span,
     })
 }
