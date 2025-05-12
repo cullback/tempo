@@ -2,6 +2,8 @@ use pest::Parser;
 use pest_derive::Parser;
 use std::env;
 
+mod abstract_syntax_tree;
+
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
 struct MyParser;
@@ -19,23 +21,8 @@ fn print_pair(pair: pest::iterators::Pair<Rule>, indent_level: usize) {
 }
 
 fn main() {
-    println!("Hello, world!"); // This can be kept or removed based on preference
-
     let args: Vec<String> = env::args().collect();
-
-    if args.len() < 2 {
-        eprintln!("Usage: {} <filename>", args[0]);
-        return;
-    }
-
-    let content = match std::fs::read_to_string(&args[1]) {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("Failed to read file '{}': {}", &args[1], e);
-            return;
-        }
-    };
-
+    let content = std::fs::read_to_string(&args[1]).unwrap();
     let parse_result = MyParser::parse(Rule::program, &content);
 
     match parse_result {
