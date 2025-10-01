@@ -6,7 +6,33 @@ edition = "2024"
 [dependencies]
 pest = "2.8.0"
 pest_derive = "2.8.0"
-cranelift = "0.118.0"
-cranelift-module = "0.118.0"
-cranelift-jit = "0.118.0"
-cranelift-native = "0.118.0"
+
+# [lints.clippy]
+# all = { level = "deny", priority = -1 }
+# pedantic = { level = "deny", priority = -1 }
+# nursery = { level = "deny", priority = -1 }
+# cargo = { level = "deny", priority = -1 }
+# restriction = { level = "deny", priority = -1 }
+# arbitrary_source_item_ordering = "allow"
+# blanket_clippy_restriction_lints = "allow"
+# cargo_common_metadata = "allow"
+# expect_used = "allow"
+# implicit_return = "allow"
+# indexing_slicing = "allow"
+# min_ident_chars = "allow"
+# missing_docs_in_private_items = "allow"
+# mod_module_files = "allow"
+# multiple_crate_versions = "allow"
+# option_if_let_else = "allow"
+# panic = "allow"
+# print_stderr = "allow"
+# print_stdout = "allow"
+# question_mark_used = "allow"
+# single_call_fn = "allow"
+# single_char_lifetime_names = "allow"
+# std_instead_of_alloc = "allow"
+# std_instead_of_core = "allow"
+# unwrap_used = "allow"
+# missing_trait_methods = "allow"
+# arithmetic_side_effects = "allow"
+# let-underscore-must-use = "allow"

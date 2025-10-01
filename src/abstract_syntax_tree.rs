@@ -76,14 +76,16 @@ fn next_inner_or_err<'a>(
     pairs: &mut pest::iterators::Pairs<'a, crate::Rule>,
     expected_rule_name: &str,
 ) -> Result<Pair<'a, crate::Rule>, String> {
-    pairs
-        .next()
-        .ok_or_else(|| format!("Expected {} but found nothing", expected_rule_name))
+    pairs.next().ok_or_else(|| {
+        format!("Expected {} but found nothing", expected_rule_name)
+    })
 }
 
 // Parsing functions
 
-pub fn parse_identifier<'a>(pair: Pair<'a, crate::Rule>) -> Result<Identifier<'a>, String> {
+pub fn parse_identifier(
+    pair: Pair<'_, crate::Rule>,
+) -> Result<Identifier<'_>, String> {
     if pair.as_rule() != crate::Rule::identifier {
         return Err(format!(
             "Expected identifier, got {:?} for \"{}\"",
@@ -97,7 +99,7 @@ pub fn parse_identifier<'a>(pair: Pair<'a, crate::Rule>) -> Result<Identifier<'a
     })
 }
 
-fn parse_number<'a>(pair: Pair<'a, crate::Rule>) -> Result<Number<'a>, String> {
+fn parse_number(pair: Pair<'_, crate::Rule>) -> Result<Number<'_>, String> {
     if pair.as_rule() != crate::Rule::number {
         return Err(format!(
             "Expected number, got {:?} for \"{}\"",
@@ -105,17 +107,18 @@ fn parse_number<'a>(pair: Pair<'a, crate::Rule>) -> Result<Number<'a>, String> {
             pair.as_str()
         ));
     }
-    let value = pair
-        .as_str()
-        .parse::<i64>()
-        .map_err(|e| format!("Failed to parse number '{}': {}", pair.as_str(), e))?;
+    let value = pair.as_str().parse::<i64>().map_err(|e| {
+        format!("Failed to parse number '{}': {}", pair.as_str(), e)
+    })?;
     Ok(Number {
         value,
         span: pair.as_span(),
     })
 }
 
-fn parse_function_call<'a>(pair: Pair<'a, crate::Rule>) -> Result<FunctionCall<'a>, String> {
+fn parse_function_call(
+    pair: Pair<'_, crate::Rule>,
+) -> Result<FunctionCall<'_>, String> {
     if pair.as_rule() != crate::Rule::function_call {
         return Err(format!(
             "Expected function_call, got {:?} for \"{}\"",
@@ -126,10 +129,12 @@ fn parse_function_call<'a>(pair: Pair<'a, crate::Rule>) -> Result<FunctionCall<'
     let fn_call_span = pair.as_span();
     let mut inner_pairs = pair.into_inner();
 
-    let ident_pair = next_inner_or_err(inner_pairs.by_ref(), "function_call identifier")?;
+    let ident_pair =
+        next_inner_or_err(inner_pairs.by_ref(), "function_call identifier")?;
     let function_name = parse_identifier(ident_pair)?;
 
-    let args_pair = next_inner_or_err(inner_pairs.by_ref(), "function_call arguments")?;
+    let args_pair =
+        next_inner_or_err(inner_pairs.by_ref(), "function_call arguments")?;
     if args_pair.as_rule() != crate::Rule::function_arguments {
         return Err(format!(
             "Expected function_arguments, got {:?}",
@@ -149,9 +154,9 @@ fn parse_function_call<'a>(pair: Pair<'a, crate::Rule>) -> Result<FunctionCall<'
     })
 }
 
-fn parse_function_definition<'a>(
-    pair: Pair<'a, crate::Rule>,
-) -> Result<FunctionDefinition<'a>, String> {
+fn parse_function_definition(
+    pair: Pair<'_, crate::Rule>,
+) -> Result<FunctionDefinition<'_>, String> {
     if pair.as_rule() != crate::Rule::function_definition {
         return Err(format!(
             "Expected function_definition, got {:?} for \"{}\"",
@@ -177,8 +182,10 @@ fn parse_function_definition<'a>(
         parameters.push(parse_identifier(ident_pair)?);
     }
 
-    let body_expr_pair =
-        next_inner_or_err(inner_pairs.by_ref(), "function_definition body expression")?;
+    let body_expr_pair = next_inner_or_err(
+        inner_pairs.by_ref(),
+        "function_definition body expression",
+    )?;
     let body = parse_expression(body_expr_pair)?;
 
     Ok(FunctionDefinition {
@@ -188,7 +195,7 @@ fn parse_function_definition<'a>(
     })
 }
 
-fn parse_block<'a>(pair: Pair<'a, crate::Rule>) -> Result<Block<'a>, String> {
+fn parse_block(pair: Pair<'_, crate::Rule>) -> Result<Block<'_>, String> {
     if pair.as_rule() != crate::Rule::block {
         return Err(format!(
             "Expected block, got {:?} for \"{}\"",
@@ -209,13 +216,15 @@ fn parse_block<'a>(pair: Pair<'a, crate::Rule>) -> Result<Block<'a>, String> {
         }
     }
 
-    let expression_pair = inner_pairs
-        .next()
-        .ok_or_else(|| "Block: expected expression after assignments".to_string())?;
+    let expression_pair = inner_pairs.next().ok_or_else(|| {
+        "Block: expected expression after assignments".to_string()
+    })?;
     let expression = parse_expression(expression_pair)?;
 
     if inner_pairs.next().is_some() {
-        return Err("Block: unexpected extra pairs after expression".to_string());
+        return Err(
+            "Block: unexpected extra pairs after expression".to_string()
+        );
     }
 
     Ok(Block {
@@ -225,7 +234,9 @@ fn parse_block<'a>(pair: Pair<'a, crate::Rule>) -> Result<Block<'a>, String> {
     })
 }
 
-pub fn parse_expression<'a>(pair: Pair<'a, crate::Rule>) -> Result<Expression<'a>, String> {
+pub fn parse_expression(
+    pair: Pair<'_, crate::Rule>,
+) -> Result<Expression<'_>, String> {
     if pair.as_rule() != crate::Rule::expression {
         return Err(format!(
             "Expected expression, got {:?} for \"{}\"",
@@ -240,15 +251,21 @@ pub fn parse_expression<'a>(pair: Pair<'a, crate::Rule>) -> Result<Expression<'a
         .ok_or_else(|| "Expression rule was unexpectedly empty".to_string())?;
 
     match inner_expr_pair.as_rule() {
-        crate::Rule::number => Ok(Expression::Number(parse_number(inner_expr_pair)?)),
-        crate::Rule::identifier => Ok(Expression::Identifier(parse_identifier(inner_expr_pair)?)),
-        crate::Rule::function_call => Ok(Expression::FunctionCall(parse_function_call(
-            inner_expr_pair,
-        )?)),
+        crate::Rule::number => {
+            Ok(Expression::Number(parse_number(inner_expr_pair)?))
+        }
+        crate::Rule::identifier => {
+            Ok(Expression::Identifier(parse_identifier(inner_expr_pair)?))
+        }
+        crate::Rule::function_call => Ok(Expression::FunctionCall(
+            parse_function_call(inner_expr_pair)?,
+        )),
         crate::Rule::function_definition => Ok(Expression::FunctionDefinition(
             parse_function_definition(inner_expr_pair)?,
         )),
-        crate::Rule::block => Ok(Expression::Block(parse_block(inner_expr_pair)?)),
+        crate::Rule::block => {
+            Ok(Expression::Block(parse_block(inner_expr_pair)?))
+        }
         _ => Err(format!(
             "Unexpected rule {:?} inside expression for \"{}\"",
             inner_expr_pair.as_rule(),
@@ -257,7 +274,9 @@ pub fn parse_expression<'a>(pair: Pair<'a, crate::Rule>) -> Result<Expression<'a
     }
 }
 
-fn parse_assignment<'a>(pair: Pair<'a, crate::Rule>) -> Result<Assignment<'a>, String> {
+fn parse_assignment(
+    pair: Pair<'_, crate::Rule>,
+) -> Result<Assignment<'_>, String> {
     if pair.as_rule() != crate::Rule::assignment {
         return Err(format!(
             "Expected assignment, got {:?} for \"{}\"",
@@ -268,10 +287,12 @@ fn parse_assignment<'a>(pair: Pair<'a, crate::Rule>) -> Result<Assignment<'a>, S
     let assignment_span = pair.as_span();
     let mut inner_pairs = pair.into_inner();
 
-    let ident_pair = next_inner_or_err(inner_pairs.by_ref(), "assignment identifier")?;
+    let ident_pair =
+        next_inner_or_err(inner_pairs.by_ref(), "assignment identifier")?;
     let identifier = parse_identifier(ident_pair)?;
 
-    let expr_pair = next_inner_or_err(inner_pairs.by_ref(), "assignment expression")?;
+    let expr_pair =
+        next_inner_or_err(inner_pairs.by_ref(), "assignment expression")?;
     let expression = parse_expression(expr_pair)?;
 
     Ok(Assignment {
@@ -281,7 +302,9 @@ fn parse_assignment<'a>(pair: Pair<'a, crate::Rule>) -> Result<Assignment<'a>, S
     })
 }
 
-pub fn parse_program<'a>(pairs: Pairs<'a, crate::Rule>) -> Result<Program<'a>, String> {
+pub fn parse_program(
+    pairs: Pairs<'_, crate::Rule>,
+) -> Result<Program<'_>, String> {
     let mut assignments = Vec::new();
     for pair in pairs {
         if pair.as_rule() == crate::Rule::assignment {

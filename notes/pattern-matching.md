@@ -1,6 +1,5 @@
 # Pattern matching
 
-
 ```ruby
 # early return
 if condition then return 5

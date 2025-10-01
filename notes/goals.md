@@ -6,7 +6,6 @@
 - simple language, few primitives
 - faster and simpler than go
 
-
 ## Anti features
 
 - No garbage collection.
@@ -23,12 +22,9 @@
 - No arithmetic precedence.
 - No variable shadowing.
 
-
 ## Features
 
 - typing is optional everywhere
   - can use lints to enforce more strict typing
   - libraries should annotate top-level functions
   - fast to prototype
-
-
