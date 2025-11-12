@@ -1,4 +1,6 @@
 mod aarch64_backend;
+mod ast;
+mod ast_lowering;
 mod ir;
 mod regalloc;
 mod smol_hello;

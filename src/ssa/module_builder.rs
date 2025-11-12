@@ -12,7 +12,7 @@ pub struct ModuleBuilder {
 
 impl ModuleBuilder {
     #[must_use]
-    pub fn build_module(mut self) -> Module {
+    pub fn build_module(self) -> Module {
         self.module
     }
 

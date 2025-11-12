@@ -155,4 +155,121 @@ mod tests {
         let binary = AArch64Backend::compile(&ir_program);
         assert_eq!(binary.len(), 164);
     }
+
+    #[test]
+    fn test_hello_world_from_ast() {
+        use crate::ast::*;
+        use crate::ast_lowering::AstLowering;
+
+        let source = "hello world";
+        let span = Span::new(source);
+
+        let program = Program {
+            assignments: vec![
+                Assignment {
+                    identifier: Identifier {
+                        name: "fd".to_string(),
+                        span,
+                    },
+                    expression: Box::new(Expression::Number(Number {
+                        value: 1,
+                        span,
+                    })),
+                    span,
+                },
+                Assignment {
+                    identifier: Identifier {
+                        name: "msg".to_string(),
+                        span,
+                    },
+                    expression: Box::new(Expression::FunctionCall(
+                        FunctionCall {
+                            function_name: Identifier {
+                                name: "string_literal".to_string(),
+                                span,
+                            },
+                            arguments: vec![Expression::Identifier(
+                                Identifier {
+                                    name: "Hello World\n".to_string(),
+                                    span,
+                                },
+                            )],
+                            span,
+                        },
+                    )),
+                    span,
+                },
+                Assignment {
+                    identifier: Identifier {
+                        name: "len".to_string(),
+                        span,
+                    },
+                    expression: Box::new(Expression::Number(Number {
+                        value: 12,
+                        span,
+                    })),
+                    span,
+                },
+                Assignment {
+                    identifier: Identifier {
+                        name: "_".to_string(),
+                        span,
+                    },
+                    expression: Box::new(Expression::FunctionCall(
+                        FunctionCall {
+                            function_name: Identifier {
+                                name: "write".to_string(),
+                                span,
+                            },
+                            arguments: vec![
+                                Expression::Identifier(Identifier {
+                                    name: "fd".to_string(),
+                                    span,
+                                }),
+                                Expression::Identifier(Identifier {
+                                    name: "msg".to_string(),
+                                    span,
+                                }),
+                                Expression::Identifier(Identifier {
+                                    name: "len".to_string(),
+                                    span,
+                                }),
+                            ],
+                            span,
+                        },
+                    )),
+                    span,
+                },
+                Assignment {
+                    identifier: Identifier {
+                        name: "_exit".to_string(),
+                        span,
+                    },
+                    expression: Box::new(Expression::FunctionCall(
+                        FunctionCall {
+                            function_name: Identifier {
+                                name: "exit".to_string(),
+                                span,
+                            },
+                            arguments: vec![Expression::Number(Number {
+                                value: 0,
+                                span,
+                            })],
+                            span,
+                        },
+                    )),
+                    span,
+                },
+            ],
+            span,
+        };
+
+        println!("AST:\n{}", program);
+
+        let lowering = AstLowering::new();
+        let module = lowering.lower_program(&program);
+        let ir_program = ssa_lowering::lower(&module);
+        let binary = AArch64Backend::compile(&ir_program);
+        assert_eq!(binary.len(), 164);
+    }
 }
