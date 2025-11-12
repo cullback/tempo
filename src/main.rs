@@ -1,6 +1,9 @@
 mod aarch64_backend;
 mod ir;
+mod regalloc;
 mod smol_hello;
+mod tac;
+mod tac_lowering;
 
 fn main() {
     smol_hello::write_aarch64_hello().unwrap();

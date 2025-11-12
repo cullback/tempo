@@ -4,6 +4,7 @@ pub enum Instruction {
     Syscall,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Register {
     X0,
     X1,
@@ -14,40 +15,4 @@ pub enum Register {
 pub struct Program {
     pub instructions: Vec<Instruction>,
     pub data: Vec<u8>,
-}
-
-impl Program {
-    pub fn hello_world() -> Self {
-        Program {
-            instructions: vec![
-                Instruction::MovImm {
-                    dest: Register::X0,
-                    value: 1,
-                },
-                Instruction::AdrPcRel {
-                    dest: Register::X1,
-                    offset: 28,
-                },
-                Instruction::MovImm {
-                    dest: Register::X2,
-                    value: 12,
-                },
-                Instruction::MovImm {
-                    dest: Register::X8,
-                    value: 64,
-                },
-                Instruction::Syscall,
-                Instruction::MovImm {
-                    dest: Register::X0,
-                    value: 0,
-                },
-                Instruction::MovImm {
-                    dest: Register::X8,
-                    value: 93,
-                },
-                Instruction::Syscall,
-            ],
-            data: b"Hello World\n".to_vec(),
-        }
-    }
 }
