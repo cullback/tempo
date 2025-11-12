@@ -3,24 +3,48 @@ use crate::regalloc::{RegisterAllocator, VReg};
 use crate::ssa::{Instruction, Module, Value};
 use std::collections::HashMap;
 
+fn analyze_syscall_usage(module: &Module) -> HashMap<Value, usize> {
+    let mut syscall_positions = HashMap::new();
+
+    for block in &module.blocks {
+        for instr in &block.instructions {
+            if let Instruction::Syscall(_, args) = instr {
+                for (i, arg) in args.iter().enumerate() {
+                    syscall_positions.insert(*arg, i);
+                }
+            }
+        }
+    }
+
+    syscall_positions
+}
+
 pub fn lower(module: &Module) -> ir::Program {
     let mut instructions = Vec::new();
     let mut value_to_reg: HashMap<Value, ir::Register> = HashMap::new();
     let mut allocator = RegisterAllocator::new();
+    let syscall_positions = analyze_syscall_usage(module);
 
     for block in &module.blocks {
         for instr in &block.instructions {
             match instr {
                 Instruction::Const(dest, val) => {
-                    let physical = match dest.0 {
-                        0 => ir::Register::X0,
-                        2 => ir::Register::X2,
-                        3 => ir::Register::X8,
-                        _ => {
+                    let physical =
+                        if let Some(&pos) = syscall_positions.get(dest) {
+                            match pos {
+                                0 => ir::Register::X8,
+                                1 => ir::Register::X0,
+                                2 => ir::Register::X1,
+                                3 => ir::Register::X2,
+                                _ => {
+                                    let vreg = VReg(dest.0 as u32);
+                                    allocator.allocate(vreg)
+                                }
+                            }
+                        } else {
                             let vreg = VReg(dest.0 as u32);
                             allocator.allocate(vreg)
-                        }
-                    };
+                        };
 
                     instructions.push(ir::Instruction::MovImm {
                         dest: physical,
@@ -29,13 +53,22 @@ pub fn lower(module: &Module) -> ir::Program {
                     value_to_reg.insert(*dest, physical);
                 }
                 Instruction::LoadDataAddr(dest, offset) => {
-                    let physical = match dest.0 {
-                        1 => ir::Register::X1,
-                        _ => {
+                    let physical =
+                        if let Some(&pos) = syscall_positions.get(dest) {
+                            match pos {
+                                0 => ir::Register::X8,
+                                1 => ir::Register::X0,
+                                2 => ir::Register::X1,
+                                3 => ir::Register::X2,
+                                _ => {
+                                    let vreg = VReg(dest.0 as u32);
+                                    allocator.allocate(vreg)
+                                }
+                            }
+                        } else {
                             let vreg = VReg(dest.0 as u32);
                             allocator.allocate(vreg)
-                        }
-                    };
+                        };
 
                     let current_instr_count = instructions.len();
                     let estimated_remaining = 7;
