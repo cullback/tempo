@@ -1,4 +1,4 @@
-use crate::ast::{
+use crate::ast::types::{
     Assignment, Block, Expression, FunctionCall, Identifier, Number, Program,
 };
 use crate::ssa::{

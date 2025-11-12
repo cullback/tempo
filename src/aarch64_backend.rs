@@ -159,7 +159,6 @@ mod tests {
     #[test]
     fn test_hello_world_from_ast() {
         use crate::ast::*;
-        use crate::ast_lowering::AstLowering;
 
         let source = "hello world";
         let span = Span::new(source);
