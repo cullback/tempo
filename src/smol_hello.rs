@@ -1,10 +1,10 @@
 use crate::aarch64_backend::AArch64Backend;
-use crate::tac;
-use crate::tac_lowering;
+use crate::ssa_ir;
+use crate::ssa_lowering;
 
 pub fn write_aarch64_hello() -> std::io::Result<()> {
-    let tac_program = tac::Program::hello_world();
-    let ir_program = tac_lowering::lower(&tac_program);
+    let ssa_program = ssa_ir::Program::hello_world();
+    let ir_program = ssa_lowering::lower(&ssa_program);
     let binary = AArch64Backend::compile(&ir_program);
     AArch64Backend::write_binary(&binary, "hello_aarch64")
 }

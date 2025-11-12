@@ -1,6 +1,8 @@
 use crate::ir::Register;
-use crate::tac::VReg;
 use std::collections::HashMap;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct VReg(pub u32);
 
 pub struct RegisterAllocator {
     allocation: HashMap<VReg, Register>,

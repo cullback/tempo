@@ -115,13 +115,13 @@ impl AArch64Backend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tac;
-    use crate::tac_lowering;
+    use crate::ssa_ir;
+    use crate::ssa_lowering;
 
     #[test]
     fn test_hello_world_binary_size() {
-        let tac_program = tac::Program::hello_world();
-        let ir_program = tac_lowering::lower(&tac_program);
+        let ssa_program = ssa_ir::Program::hello_world();
+        let ir_program = ssa_lowering::lower(&ssa_program);
         let binary = AArch64Backend::compile(&ir_program);
         assert_eq!(binary.len(), 164);
     }
