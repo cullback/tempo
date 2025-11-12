@@ -1,3 +1,5 @@
+mod aarch64_backend;
+mod ir;
 mod smol_hello;
 
 fn main() {
