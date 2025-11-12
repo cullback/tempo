@@ -1,3 +1,6 @@
+use crate::ssa::instruction::{Instruction, Value};
+
+/// [`BlockId`] represents a reference to a basic block in an IR function.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct BlockId(pub usize);
 
@@ -7,33 +10,7 @@ impl core::fmt::Display for BlockId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Value(pub usize);
-
-impl core::fmt::Display for Value {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "v{}", self.0)
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum BinaryOp {
-    Add,
-    And,
-    Eq,
-    Lt,
-    Le,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Instruction {
-    BinOp(Value, BinaryOp, Value, Value),
-    Move(Value, Value),
-    Const(Value, u64),
-    LoadDataAddr(Value, usize),
-    Syscall(Option<Value>, Vec<Value>),
-}
-
+/// [`Terminator`] terminates a given basic block.
 #[derive(Debug, Clone)]
 pub enum Terminator {
     None,
@@ -84,47 +61,10 @@ impl core::fmt::Display for Terminator {
     }
 }
 
+/// A basic block is a sequence of instructions that ends with a terminator.
 #[derive(Clone)]
 pub struct BasicBlock {
     pub params: Vec<Value>,
     pub instructions: Vec<Instruction>,
     pub terminator: Terminator,
-}
-
-pub struct Program {
-    pub blocks: Vec<BasicBlock>,
-    pub data: Vec<u8>,
-}
-
-const SYS_WRITE: u64 = 64;
-const SYS_EXIT: u64 = 93;
-const STDOUT: u64 = 1;
-
-impl Program {
-    pub fn hello_world() -> Self {
-        let v0 = Value(0);
-        let v1 = Value(1);
-        let v2 = Value(2);
-        let v3 = Value(3);
-
-        let block = BasicBlock {
-            params: vec![],
-            instructions: vec![
-                Instruction::Const(v0, STDOUT),
-                Instruction::LoadDataAddr(v1, 0),
-                Instruction::Const(v2, 12),
-                Instruction::Const(v3, SYS_WRITE),
-                Instruction::Syscall(None, vec![v3, v0, v1, v2]),
-                Instruction::Const(v0, 0),
-                Instruction::Const(v3, SYS_EXIT),
-                Instruction::Syscall(None, vec![v3, v0]),
-            ],
-            terminator: Terminator::ReturnVoid,
-        };
-
-        Program {
-            blocks: vec![block],
-            data: b"Hello World\n".to_vec(),
-        }
-    }
 }

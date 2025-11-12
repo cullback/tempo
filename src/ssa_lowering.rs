@@ -1,17 +1,17 @@
 use crate::ir;
 use crate::regalloc::{RegisterAllocator, VReg};
-use crate::ssa_ir;
+use crate::ssa::{Instruction, Module, Value};
 use std::collections::HashMap;
 
-pub fn lower(program: &ssa_ir::Program) -> ir::Program {
+pub fn lower(module: &Module) -> ir::Program {
     let mut instructions = Vec::new();
-    let mut value_to_reg: HashMap<ssa_ir::Value, ir::Register> = HashMap::new();
+    let mut value_to_reg: HashMap<Value, ir::Register> = HashMap::new();
     let mut allocator = RegisterAllocator::new();
 
-    for block in &program.blocks {
+    for block in &module.blocks {
         for instr in &block.instructions {
             match instr {
-                ssa_ir::Instruction::Const(dest, val) => {
+                Instruction::Const(dest, val) => {
                     let physical = match dest.0 {
                         0 => ir::Register::X0,
                         2 => ir::Register::X2,
@@ -28,7 +28,7 @@ pub fn lower(program: &ssa_ir::Program) -> ir::Program {
                     });
                     value_to_reg.insert(*dest, physical);
                 }
-                ssa_ir::Instruction::LoadDataAddr(dest, offset) => {
+                Instruction::LoadDataAddr(dest, offset) => {
                     let physical = match dest.0 {
                         1 => ir::Register::X1,
                         _ => {
@@ -52,10 +52,10 @@ pub fn lower(program: &ssa_ir::Program) -> ir::Program {
                     });
                     value_to_reg.insert(*dest, physical);
                 }
-                ssa_ir::Instruction::Syscall(_result, args) => {
+                Instruction::Syscall(_result, _args) => {
                     instructions.push(ir::Instruction::Syscall);
                 }
-                ssa_ir::Instruction::Move(dest, src) => {
+                Instruction::Move(dest, src) => {
                     let src_reg = value_to_reg[src];
                     let dest_reg =
                         value_to_reg.get(dest).copied().unwrap_or_else(|| {
@@ -69,7 +69,7 @@ pub fn lower(program: &ssa_ir::Program) -> ir::Program {
                         );
                     }
                 }
-                ssa_ir::Instruction::BinOp(_, _, _, _) => {
+                Instruction::BinOp(_, _, _, _) => {
                     panic!("BinOp not yet implemented");
                 }
             }
@@ -78,6 +78,6 @@ pub fn lower(program: &ssa_ir::Program) -> ir::Program {
 
     ir::Program {
         instructions,
-        data: program.data.clone(),
+        data: module.data.clone(),
     }
 }

@@ -2,7 +2,7 @@ mod aarch64_backend;
 mod ir;
 mod regalloc;
 mod smol_hello;
-mod ssa_ir;
+mod ssa;
 mod ssa_lowering;
 
 fn main() {
