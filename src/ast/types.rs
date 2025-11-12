@@ -59,7 +59,26 @@ pub struct Identifier<'a> {
 
 impl fmt::Display for Identifier<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name)
+        if self.name.contains('\n')
+            || self.name.contains('\t')
+            || self.name.contains('\r')
+            || self.name.contains('"')
+        {
+            write!(f, "\"")?;
+            for ch in self.name.chars() {
+                match ch {
+                    '\n' => write!(f, "\\n")?,
+                    '\t' => write!(f, "\\t")?,
+                    '\r' => write!(f, "\\r")?,
+                    '"' => write!(f, "\\\"")?,
+                    '\\' => write!(f, "\\\\")?,
+                    _ => write!(f, "{}", ch)?,
+                }
+            }
+            write!(f, "\"")
+        } else {
+            write!(f, "{}", self.name)
+        }
     }
 }
 
