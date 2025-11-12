@@ -3,5 +3,6 @@ use crate::ir::Program;
 
 pub fn write_aarch64_hello() -> std::io::Result<()> {
     let program = Program::hello_world();
-    AArch64Backend::compile(&program, "hello_aarch64")
+    let binary = AArch64Backend::compile(&program);
+    AArch64Backend::write_binary(&binary, "hello_aarch64")
 }

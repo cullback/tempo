@@ -54,10 +54,7 @@ impl AArch64Backend {
         }
     }
 
-    pub fn compile(
-        program: &Program,
-        output_path: &str,
-    ) -> std::io::Result<()> {
+    pub fn compile(program: &Program) -> Vec<u8> {
         let mut binary = Vec::new();
 
         let code_size = program.instructions.len() * 4;
@@ -92,8 +89,15 @@ impl AArch64Backend {
 
         binary.extend_from_slice(&program.data);
 
+        binary
+    }
+
+    pub fn write_binary(
+        binary: &[u8],
+        output_path: &str,
+    ) -> std::io::Result<()> {
         let mut file = File::create(output_path)?;
-        file.write_all(&binary)?;
+        file.write_all(binary)?;
 
         #[cfg(unix)]
         {
@@ -105,5 +109,18 @@ impl AArch64Backend {
 
         println!("Created {} ({} bytes)", output_path, binary.len());
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ir::Program;
+
+    #[test]
+    fn test_hello_world_binary_size() {
+        let program = Program::hello_world();
+        let binary = AArch64Backend::compile(&program);
+        assert_eq!(binary.len(), 164);
     }
 }
