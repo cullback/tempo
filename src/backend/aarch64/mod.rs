@@ -1,203 +1,15 @@
-use crate::ir::{Instruction, Program, Register};
-use std::fs::File;
-use std::io::Write;
+pub mod codegen;
+pub mod elf;
 
-pub struct AArch64Backend;
-
-impl AArch64Backend {
-    fn encode_register(reg: &Register) -> u8 {
-        match reg {
-            Register::X0 => 0,
-            Register::X1 => 1,
-            Register::X2 => 2,
-            Register::X3 => 3,
-            Register::X4 => 4,
-            Register::X5 => 5,
-            Register::X6 => 6,
-            Register::X7 => 7,
-            Register::X8 => 8,
-        }
-    }
-
-    fn encode_mov_imm(dest: &Register, value: u64) -> [u8; 4] {
-        let rd = Self::encode_register(dest);
-        let imm16 = (value & 0xffff) as u16;
-        let hw = 0;
-
-        let encoding = 0xd2800000u32
-            | ((hw & 0b11) << 21)
-            | ((imm16 as u32) << 5)
-            | (rd as u32);
-
-        encoding.to_le_bytes()
-    }
-
-    fn encode_adr(dest: &Register, offset: i32) -> [u8; 4] {
-        let rd = Self::encode_register(dest);
-        let immlo = (offset & 0b11) as u32;
-        let immhi = ((offset >> 2) & 0x7ffff) as u32;
-
-        let encoding =
-            0x10000000u32 | (immlo << 29) | (immhi << 5) | (rd as u32);
-
-        encoding.to_le_bytes()
-    }
-
-    fn encode_syscall() -> [u8; 4] {
-        [0x01, 0x00, 0x00, 0xd4]
-    }
-
-    fn encode_add(
-        dest: &Register,
-        src1: &Register,
-        src2: &Register,
-    ) -> [u8; 4] {
-        let rd = Self::encode_register(dest);
-        let rn = Self::encode_register(src1);
-        let rm = Self::encode_register(src2);
-
-        let encoding = 0x8b000000u32
-            | ((rm as u32) << 16)
-            | ((rn as u32) << 5)
-            | (rd as u32);
-        encoding.to_le_bytes()
-    }
-
-    fn encode_sub(
-        dest: &Register,
-        src1: &Register,
-        src2: &Register,
-    ) -> [u8; 4] {
-        let rd = Self::encode_register(dest);
-        let rn = Self::encode_register(src1);
-        let rm = Self::encode_register(src2);
-
-        let encoding = 0xcb000000u32
-            | ((rm as u32) << 16)
-            | ((rn as u32) << 5)
-            | (rd as u32);
-        encoding.to_le_bytes()
-    }
-
-    fn encode_mul(
-        dest: &Register,
-        src1: &Register,
-        src2: &Register,
-    ) -> [u8; 4] {
-        let rd = Self::encode_register(dest);
-        let rn = Self::encode_register(src1);
-        let rm = Self::encode_register(src2);
-
-        let encoding = 0x9b007c00u32
-            | ((rm as u32) << 16)
-            | ((rn as u32) << 5)
-            | (rd as u32);
-        encoding.to_le_bytes()
-    }
-
-    fn encode_div(
-        dest: &Register,
-        src1: &Register,
-        src2: &Register,
-    ) -> [u8; 4] {
-        let rd = Self::encode_register(dest);
-        let rn = Self::encode_register(src1);
-        let rm = Self::encode_register(src2);
-
-        let encoding = 0x9ac00c00u32
-            | ((rm as u32) << 16)
-            | ((rn as u32) << 5)
-            | (rd as u32);
-        encoding.to_le_bytes()
-    }
-
-    fn encode_instruction(instr: &Instruction) -> Vec<u8> {
-        match instr {
-            Instruction::MovImm { dest, value } => {
-                Self::encode_mov_imm(dest, *value).to_vec()
-            }
-            Instruction::AdrPcRel { dest, offset } => {
-                Self::encode_adr(dest, *offset).to_vec()
-            }
-            Instruction::Syscall => Self::encode_syscall().to_vec(),
-            Instruction::Add { dest, src1, src2 } => {
-                Self::encode_add(dest, src1, src2).to_vec()
-            }
-            Instruction::Sub { dest, src1, src2 } => {
-                Self::encode_sub(dest, src1, src2).to_vec()
-            }
-            Instruction::Mul { dest, src1, src2 } => {
-                Self::encode_mul(dest, src1, src2).to_vec()
-            }
-            Instruction::Div { dest, src1, src2 } => {
-                Self::encode_div(dest, src1, src2).to_vec()
-            }
-        }
-    }
-
-    pub fn compile(program: &Program) -> Vec<u8> {
-        let mut binary = Vec::new();
-
-        let code_size = program.instructions.len() * 4;
-        let data_offset = 0x78 + code_size;
-        let total_size = data_offset + program.data.len();
-
-        binary.extend_from_slice(&[
-            0x7f, b'E', b'L', b'F', 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0,
-            0xb7, 0x00, 1, 0, 0, 0, 0x78, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40,
-            0x00, 0x38, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        ]);
-
-        binary.extend_from_slice(&[
-            0x01, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00,
-        ]);
-
-        binary.push(total_size as u8);
-        binary.extend_from_slice(&[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-        binary.push(total_size as u8);
-        binary.extend_from_slice(&[
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00,
-        ]);
-
-        for instr in &program.instructions {
-            binary.extend_from_slice(&Self::encode_instruction(instr));
-        }
-
-        binary.extend_from_slice(&program.data);
-
-        binary
-    }
-
-    pub fn write_binary(
-        binary: &[u8],
-        output_path: &str,
-    ) -> std::io::Result<()> {
-        let mut file = File::create(output_path)?;
-        file.write_all(binary)?;
-
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let mut perms = file.metadata()?.permissions();
-            perms.set_mode(0o755);
-            std::fs::set_permissions(output_path, perms)?;
-        }
-
-        println!("Created {} ({} bytes)", output_path, binary.len());
-        Ok(())
-    }
-}
+pub use elf::{compile, write_binary};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::ssa::{ModuleBuilder, STDOUT, SYS_EXIT, SYS_WRITE, Terminator};
-    use crate::ssa_lowering;
+    use crate::ast::*;
+    use crate::backend::ir::Program as IrProgram;
+    use crate::ssa::{
+        ModuleBuilder, STDOUT, SYS_EXIT, SYS_WRITE, Terminator, lower,
+    };
 
     #[test]
     fn test_hello_world_binary_size() {
@@ -232,15 +44,13 @@ mod tests {
         builder.set_data(b"Hello World\n".to_vec());
 
         let module = builder.build_module();
-        let ir_program = ssa_lowering::lower(&module);
-        let binary = AArch64Backend::compile(&ir_program);
+        let ir_program = lower(&module);
+        let binary = super::compile(&ir_program);
         assert_eq!(binary.len(), 164);
     }
 
     #[test]
     fn test_hello_world_from_ast() {
-        use crate::ast::*;
-
         let source = "hello world";
         let span = Span::new(source);
 
@@ -372,8 +182,8 @@ mod tests {
 
         let lowering = AstLowering::new();
         let module = lowering.lower_program(&program);
-        let ir_program = ssa_lowering::lower(&module);
-        let binary = AArch64Backend::compile(&ir_program);
+        let ir_program = lower(&module);
+        let binary = super::compile(&ir_program);
         assert_eq!(binary.len(), 164);
     }
 }

@@ -1,4 +1,4 @@
-use crate::ir::Register;
+use crate::backend::ir::Register;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -1,0 +1,59 @@
+use crate::backend::ir::Program;
+use std::fs::File;
+use std::io::Write;
+
+use super::codegen;
+
+pub fn compile(program: &Program) -> Vec<u8> {
+    let mut binary = Vec::new();
+
+    let code_size = program.instructions.len() * 4;
+    let data_offset = 0x78 + code_size;
+    let total_size = data_offset + program.data.len();
+
+    binary.extend_from_slice(&[
+        0x7f, b'E', b'L', b'F', 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0xb7,
+        0x00, 1, 0, 0, 0, 0x78, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x38, 0x00, 0x01,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ]);
+
+    binary.extend_from_slice(&[
+        0x01, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ]);
+
+    binary.push(total_size as u8);
+    binary.extend_from_slice(&[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+    binary.push(total_size as u8);
+    binary.extend_from_slice(&[
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00,
+    ]);
+
+    for instr in &program.instructions {
+        binary.extend_from_slice(&codegen::encode_instruction(instr));
+    }
+
+    binary.extend_from_slice(&program.data);
+
+    binary
+}
+
+pub fn write_binary(binary: &[u8], output_path: &str) -> std::io::Result<()> {
+    let mut file = File::create(output_path)?;
+    file.write_all(binary)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = file.metadata()?.permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(output_path, perms)?;
+    }
+
+    println!("Created {} ({} bytes)", output_path, binary.len());
+    Ok(())
+}

@@ -1,14 +1,10 @@
-mod aarch64_backend;
 mod ast;
-mod ir;
-mod parser;
-mod regalloc;
-mod smol_hello;
+mod backend;
 mod ssa;
-mod ssa_lowering;
 
-use aarch64_backend::AArch64Backend;
-use ast::AstLowering;
+use ast::{AstLowering, parse_program};
+use backend::{compile, write_binary};
+use ssa::lower;
 use std::env;
 use std::fs;
 
@@ -23,7 +19,7 @@ fn main() {
     let input_path = &args[1];
     let source = fs::read_to_string(input_path).unwrap();
 
-    let program = parser::parse_program(&source).unwrap();
+    let program = parse_program(&source).unwrap();
     println!("AST:\n{}", program);
 
     let lowering = AstLowering::new();
@@ -37,16 +33,16 @@ fn main() {
         }
     }
 
-    let ir_program = ssa_lowering::lower(&module);
+    let ir_program = lower(&module);
 
     println!("\nLowered IR:");
     for (i, instr) in ir_program.instructions.iter().enumerate() {
         println!("{:3}: {:?}", i, instr);
     }
 
-    let binary = AArch64Backend::compile(&ir_program);
+    let binary = compile(&ir_program);
 
     let input_file = std::path::Path::new(input_path);
     let output_name = input_file.file_stem().unwrap().to_str().unwrap();
-    AArch64Backend::write_binary(&binary, output_name).unwrap();
+    write_binary(&binary, output_name).unwrap();
 }

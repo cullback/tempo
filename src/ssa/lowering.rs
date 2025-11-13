@@ -1,5 +1,7 @@
-use crate::ir;
-use crate::regalloc::{RegisterAllocator, VReg};
+use crate::backend::{
+    ir,
+    regalloc::{RegisterAllocator, VReg},
+};
 use crate::ssa::{Instruction, Module, Value};
 use std::collections::HashMap;
 

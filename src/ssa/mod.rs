@@ -1,10 +1,12 @@
 pub mod basic_block;
 pub mod instruction;
+pub mod lowering;
 pub mod module;
 pub mod module_builder;
 
 pub use basic_block::Terminator;
 pub use instruction::{BinaryOp, Instruction, Value};
+pub use lowering::lower;
 pub use module::Module;
 pub use module_builder::ModuleBuilder;
 
