@@ -3,7 +3,7 @@ mod backend;
 mod ssa;
 
 use ast::{AstLowering, parse_program};
-use backend::{compile, write_binary};
+use backend::{assemble_and_link, compile};
 use ssa::lower;
 use std::env;
 use std::fs;
@@ -40,9 +40,11 @@ fn main() {
         println!("{:3}: {:?}", i, instr);
     }
 
-    let binary = compile(&ir_program);
+    let asm = compile(&ir_program);
+
+    println!("\nAssembly:\n{}", asm);
 
     let input_file = std::path::Path::new(input_path);
     let output_name = input_file.file_stem().unwrap().to_str().unwrap();
-    write_binary(&binary, output_name).unwrap();
+    assemble_and_link(&asm, output_name).unwrap();
 }

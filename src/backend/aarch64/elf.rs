@@ -1,59 +1,76 @@
 use crate::backend::ir::Program;
 use std::fs::File;
 use std::io::Write;
+use std::process::Command;
 
 use super::codegen;
 
-pub fn compile(program: &Program) -> Vec<u8> {
-    let mut binary = Vec::new();
+pub fn compile(program: &Program) -> String {
+    let mut asm = String::new();
 
-    let code_size = program.instructions.len() * 4;
-    let data_offset = 0x78 + code_size;
-    let total_size = data_offset + program.data.len();
-
-    binary.extend_from_slice(&[
-        0x7f, b'E', b'L', b'F', 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0xb7,
-        0x00, 1, 0, 0, 0, 0x78, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x38, 0x00, 0x01,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    ]);
-
-    binary.extend_from_slice(&[
-        0x01, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00,
-    ]);
-
-    binary.push(total_size as u8);
-    binary.extend_from_slice(&[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-    binary.push(total_size as u8);
-    binary.extend_from_slice(&[
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00,
-    ]);
+    asm.push_str(".global _start\n");
+    asm.push_str(".text\n");
+    asm.push_str("_start:\n");
 
     for instr in &program.instructions {
-        binary.extend_from_slice(&codegen::encode_instruction(instr));
+        asm.push_str(&codegen::emit_instruction(instr));
+        asm.push('\n');
     }
 
-    binary.extend_from_slice(&program.data);
+    if !program.data.is_empty() {
+        asm.push_str("\n.Ldata:\n");
+        asm.push_str("    .byte ");
+        for (i, byte) in program.data.iter().enumerate() {
+            if i > 0 {
+                asm.push_str(", ");
+            }
+            asm.push_str(&format!("{}", byte));
+        }
+        asm.push('\n');
+    }
 
-    binary
+    asm
 }
 
-pub fn write_binary(binary: &[u8], output_path: &str) -> std::io::Result<()> {
-    let mut file = File::create(output_path)?;
-    file.write_all(binary)?;
+pub fn write_assembly(asm: &str, output_path: &str) -> std::io::Result<()> {
+    let asm_path = format!("{}.s", output_path);
+    let mut file = File::create(&asm_path)?;
+    file.write_all(asm.as_bytes())?;
+    println!("Created {}", asm_path);
+    Ok(())
+}
 
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = file.metadata()?.permissions();
-        perms.set_mode(0o755);
-        std::fs::set_permissions(output_path, perms)?;
+pub fn assemble_and_link(asm: &str, output_path: &str) -> std::io::Result<()> {
+    let asm_path = format!("{}.s", output_path);
+    let obj_path = format!("{}.o", output_path);
+
+    let mut file = File::create(&asm_path)?;
+    file.write_all(asm.as_bytes())?;
+
+    let assemble_status = Command::new("as")
+        .args(&["-o", &obj_path, &asm_path])
+        .status()?;
+
+    if !assemble_status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Assembly failed",
+        ));
     }
 
-    println!("Created {} ({} bytes)", output_path, binary.len());
+    let link_status = Command::new("ld")
+        .args(&["-o", output_path, &obj_path, "-s", "--nmagic"])
+        .status()?;
+
+    if !link_status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Linking failed",
+        ));
+    }
+
+    std::fs::remove_file(&obj_path)?;
+
+    println!("Created {} (from {})", output_path, asm_path);
     Ok(())
 }

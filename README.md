@@ -2,4 +2,7 @@
 
 A toy programming language.
 
-aider --model openrouter/google/gemini-2.5-pro-exp-03-25
+```shell
+objdump -D hello
+cargo test test_hello_world_from_ast -- --nocapture
+```

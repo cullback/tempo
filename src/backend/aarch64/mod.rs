@@ -1,7 +1,7 @@
 pub mod codegen;
 pub mod elf;
 
-pub use elf::{compile, write_binary};
+pub use elf::{assemble_and_link, compile, write_assembly};
 
 #[cfg(test)]
 mod tests {
@@ -12,7 +12,7 @@ mod tests {
     };
 
     #[test]
-    fn test_hello_world_binary_size() {
+    fn test_hello_world_assembly() {
         let mut builder = ModuleBuilder::default();
 
         let block = builder.push_bb();
@@ -45,8 +45,18 @@ mod tests {
 
         let module = builder.build_module();
         let ir_program = lower(&module);
-        let binary = super::compile(&ir_program);
-        assert_eq!(binary.len(), 164);
+        let asm = super::compile(&ir_program);
+
+        println!("Generated assembly:\n{}", asm);
+
+        assert!(asm.contains(".global _start"));
+        assert!(asm.contains("_start:"));
+        assert!(asm.contains("mov x0, #1"));
+        assert!(asm.contains("adr x1, .Ldata"));
+        assert!(asm.contains("mov x2, #12"));
+        assert!(asm.contains("mov x8, #64"));
+        assert!(asm.contains("svc #0"));
+        assert!(asm.contains(".Ldata:"));
     }
 
     #[test]
@@ -183,7 +193,10 @@ mod tests {
         let lowering = AstLowering::new();
         let module = lowering.lower_program(&program);
         let ir_program = lower(&module);
-        let binary = super::compile(&ir_program);
-        assert_eq!(binary.len(), 164);
+        let asm = super::compile(&ir_program);
+
+        assert!(asm.contains(".global _start"));
+        assert!(asm.contains("_start:"));
+        assert!(asm.contains("svc #0"));
     }
 }
