@@ -1,6 +1,6 @@
 use crate::ast::types::{
-    Assignment, Block, Expression, FunctionCall, FunctionDefinition,
-    Identifier, Number, Program,
+    Assignment, BinaryOperator, Block, Expression, FunctionCall,
+    FunctionDefinition, Identifier, Number, Program,
 };
 use crate::ssa::{
     Module, ModuleBuilder, SYS_EXIT, SYS_WRITE, Terminator, Value,
@@ -52,6 +52,7 @@ impl<'a> AstLowering<'a> {
                 self.lower_function_definition(func_def)
             }
             Expression::Block(block) => self.lower_block(block),
+            Expression::BinaryOp(binop) => self.lower_binary_op(binop),
         }
     }
 
@@ -143,6 +144,22 @@ impl<'a> AstLowering<'a> {
             "Function parameters not yet supported in lowering"
         );
         self.lower_expression(&func_def.body)
+    }
+
+    fn lower_binary_op(&mut self, binop: &crate::ast::BinaryOp<'a>) -> Value {
+        let left = self.lower_expression(&binop.left);
+        let right = self.lower_expression(&binop.right);
+        let result = self.builder.push_variable();
+
+        let op = match binop.operator {
+            BinaryOperator::Add => crate::ssa::BinaryOp::Add,
+            BinaryOperator::Subtract => crate::ssa::BinaryOp::Sub,
+            BinaryOperator::Multiply => crate::ssa::BinaryOp::Mul,
+            BinaryOperator::Divide => crate::ssa::BinaryOp::Div,
+        };
+
+        self.builder.build_binop(result, left, right, op);
+        result
     }
 }
 

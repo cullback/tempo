@@ -28,7 +28,22 @@ fn main() {
 
     let lowering = AstLowering::new();
     let module = lowering.lower_program(&program);
+
+    println!("\nSSA IR:");
+    for (i, block) in module.blocks.iter().enumerate() {
+        println!("Block {}:", i);
+        for instr in &block.instructions {
+            println!("  {:?}", instr);
+        }
+    }
+
     let ir_program = ssa_lowering::lower(&module);
+
+    println!("\nLowered IR:");
+    for (i, instr) in ir_program.instructions.iter().enumerate() {
+        println!("{:3}: {:?}", i, instr);
+    }
+
     let binary = AArch64Backend::compile(&ir_program);
 
     let input_file = std::path::Path::new(input_path);

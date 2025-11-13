@@ -1,7 +1,34 @@
+#[derive(Debug)]
 pub enum Instruction {
-    MovImm { dest: Register, value: u64 },
-    AdrPcRel { dest: Register, offset: i32 },
+    MovImm {
+        dest: Register,
+        value: u64,
+    },
+    AdrPcRel {
+        dest: Register,
+        offset: i32,
+    },
     Syscall,
+    Add {
+        dest: Register,
+        src1: Register,
+        src2: Register,
+    },
+    Sub {
+        dest: Register,
+        src1: Register,
+        src2: Register,
+    },
+    Mul {
+        dest: Register,
+        src1: Register,
+        src2: Register,
+    },
+    Div {
+        dest: Register,
+        src1: Register,
+        src2: Register,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -9,6 +36,11 @@ pub enum Register {
     X0,
     X1,
     X2,
+    X3,
+    X4,
+    X5,
+    X6,
+    X7,
     X8,
 }
 

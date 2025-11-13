@@ -12,6 +12,9 @@ impl core::fmt::Display for Value {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum BinaryOp {
     Add,
+    Sub,
+    Mul,
+    Div,
     And,
     Eq,
     Lt,

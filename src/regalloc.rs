@@ -6,12 +6,14 @@ pub struct VReg(pub u32);
 
 pub struct RegisterAllocator {
     allocation: HashMap<VReg, Register>,
+    next_register: usize,
 }
 
 impl RegisterAllocator {
     pub fn new() -> Self {
         Self {
             allocation: HashMap::new(),
+            next_register: 0,
         }
     }
 
@@ -37,12 +39,20 @@ impl RegisterAllocator {
             return reg;
         }
 
-        let physical = match vreg.0 {
-            0 => Register::X0,
-            1 => Register::X1,
-            2 => Register::X2,
-            _ => Register::X8,
-        };
+        let available_regs = [
+            Register::X0,
+            Register::X1,
+            Register::X2,
+            Register::X3,
+            Register::X4,
+            Register::X5,
+            Register::X6,
+            Register::X7,
+        ];
+
+        let physical =
+            available_regs[self.next_register % available_regs.len()];
+        self.next_register += 1;
 
         self.allocation.insert(vreg, physical);
         physical

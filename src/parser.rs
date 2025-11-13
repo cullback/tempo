@@ -2,8 +2,8 @@ use pest::Parser;
 use pest_derive::Parser;
 
 use crate::ast::{
-    Assignment, Block, Expression, FunctionCall, FunctionDefinition,
-    Identifier, Number, Program, Span,
+    Assignment, BinaryOp, BinaryOperator, Block, Expression, FunctionCall,
+    FunctionDefinition, Identifier, Number, Program, Span,
 };
 
 #[derive(Parser)]
@@ -59,6 +59,72 @@ fn parse_expression<'a>(
     pair: pest::iterators::Pair<'a, Rule>,
     span: Span<'a>,
 ) -> Result<Expression<'a>, Box<dyn std::error::Error>> {
+    let mut inner = pair.into_inner();
+    let first = inner.next().unwrap();
+    let mut expr = parse_term(first, span)?;
+
+    while let Some(op_pair) = inner.next() {
+        let operator = match op_pair.as_rule() {
+            Rule::add_op => BinaryOperator::Add,
+            Rule::sub_op => BinaryOperator::Subtract,
+            _ => unreachable!("Unexpected operator: {:?}", op_pair.as_rule()),
+        };
+
+        let right_pair = inner.next().unwrap();
+        let right = parse_term(right_pair, span)?;
+
+        expr = Expression::BinaryOp(BinaryOp {
+            left: Box::new(expr),
+            operator,
+            right: Box::new(right),
+            span,
+        });
+    }
+
+    Ok(expr)
+}
+
+fn parse_term<'a>(
+    pair: pest::iterators::Pair<'a, Rule>,
+    span: Span<'a>,
+) -> Result<Expression<'a>, Box<dyn std::error::Error>> {
+    let mut inner = pair.into_inner();
+    let first = inner.next().unwrap();
+    let mut expr = parse_factor(first, span)?;
+
+    while let Some(op_pair) = inner.next() {
+        let operator = match op_pair.as_rule() {
+            Rule::mul_op => BinaryOperator::Multiply,
+            Rule::div_op => BinaryOperator::Divide,
+            _ => unreachable!("Unexpected operator: {:?}", op_pair.as_rule()),
+        };
+
+        let right_pair = inner.next().unwrap();
+        let right = parse_factor(right_pair, span)?;
+
+        expr = Expression::BinaryOp(BinaryOp {
+            left: Box::new(expr),
+            operator,
+            right: Box::new(right),
+            span,
+        });
+    }
+
+    Ok(expr)
+}
+
+fn parse_factor<'a>(
+    pair: pest::iterators::Pair<'a, Rule>,
+    span: Span<'a>,
+) -> Result<Expression<'a>, Box<dyn std::error::Error>> {
+    let inner = pair.into_inner().next().unwrap();
+    parse_primary(inner, span)
+}
+
+fn parse_primary<'a>(
+    pair: pest::iterators::Pair<'a, Rule>,
+    span: Span<'a>,
+) -> Result<Expression<'a>, Box<dyn std::error::Error>> {
     let inner = pair.into_inner().next().unwrap();
 
     match inner.as_rule() {
@@ -86,7 +152,7 @@ fn parse_expression<'a>(
         Rule::function_call => parse_function_call(inner, span),
         Rule::function_definition => parse_function_definition(inner, span),
         Rule::block => parse_block(inner, span),
-        _ => unreachable!("Unexpected expression rule: {:?}", inner.as_rule()),
+        _ => unreachable!("Unexpected primary rule: {:?}", inner.as_rule()),
     }
 }
 

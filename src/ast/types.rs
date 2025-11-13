@@ -94,6 +94,39 @@ impl fmt::Display for Number<'_> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum BinaryOperator {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+}
+
+impl fmt::Display for BinaryOperator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BinaryOperator::Add => write!(f, "+"),
+            BinaryOperator::Subtract => write!(f, "-"),
+            BinaryOperator::Multiply => write!(f, "*"),
+            BinaryOperator::Divide => write!(f, "/"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct BinaryOp<'a> {
+    pub left: Box<Expression<'a>>,
+    pub operator: BinaryOperator,
+    pub right: Box<Expression<'a>>,
+    pub span: Span<'a>,
+}
+
+impl fmt::Display for BinaryOp<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({} {} {})", self.left, self.operator, self.right)
+    }
+}
+
 #[derive(Debug)]
 pub enum Expression<'a> {
     Number(Number<'a>),
@@ -101,6 +134,7 @@ pub enum Expression<'a> {
     FunctionCall(FunctionCall<'a>),
     FunctionDefinition(FunctionDefinition<'a>),
     Block(Block<'a>),
+    BinaryOp(BinaryOp<'a>),
 }
 
 impl fmt::Display for Expression<'_> {
@@ -111,6 +145,7 @@ impl fmt::Display for Expression<'_> {
             Expression::FunctionCall(fc) => write!(f, "{}", fc),
             Expression::FunctionDefinition(fd) => write!(f, "{}", fd),
             Expression::Block(b) => write!(f, "{}", b),
+            Expression::BinaryOp(bo) => write!(f, "{}", bo),
         }
     }
 }

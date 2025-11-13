@@ -102,8 +102,40 @@ pub fn lower(module: &Module) -> ir::Program {
                         );
                     }
                 }
-                Instruction::BinOp(_, _, _, _) => {
-                    panic!("BinOp not yet implemented");
+                Instruction::BinOp(dest, op, left, right) => {
+                    let left_reg = value_to_reg[left];
+                    let right_reg = value_to_reg[right];
+                    let dest_reg = {
+                        let vreg = VReg(dest.0 as u32);
+                        allocator.allocate(vreg)
+                    };
+
+                    let ir_instr = match op {
+                        crate::ssa::BinaryOp::Add => ir::Instruction::Add {
+                            dest: dest_reg,
+                            src1: left_reg,
+                            src2: right_reg,
+                        },
+                        crate::ssa::BinaryOp::Sub => ir::Instruction::Sub {
+                            dest: dest_reg,
+                            src1: left_reg,
+                            src2: right_reg,
+                        },
+                        crate::ssa::BinaryOp::Mul => ir::Instruction::Mul {
+                            dest: dest_reg,
+                            src1: left_reg,
+                            src2: right_reg,
+                        },
+                        crate::ssa::BinaryOp::Div => ir::Instruction::Div {
+                            dest: dest_reg,
+                            src1: left_reg,
+                            src2: right_reg,
+                        },
+                        _ => panic!("BinOp {:?} not yet implemented", op),
+                    };
+
+                    instructions.push(ir_instr);
+                    value_to_reg.insert(*dest, dest_reg);
                 }
             }
         }

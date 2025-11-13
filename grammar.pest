@@ -9,7 +9,7 @@ number        = @{ digit+ }
 string_char   =  { !("\"" | "\\") ~ ANY | "\\" ~ ("n" | "t" | "r" | "\"" | "\\") }
 string_literal = @{ "\"" ~ string_char* ~ "\"" }
 
-expression = {
+primary = {
     function_call
   | number
   | string_literal
@@ -17,6 +17,15 @@ expression = {
   | function_definition
   | block
 }
+
+expression = { term ~ ((add_op | sub_op) ~ term)* }
+term = { factor ~ ((mul_op | div_op) ~ factor)* }
+factor = { primary }
+
+add_op = { "+" }
+sub_op = { "-" }
+mul_op = { "*" }
+div_op = { "/" }
 
 function_arguments = { expression ~ ("," ~ expression)* }
 function_call      = { identifier ~ "(" ~ function_arguments ~ ")" }
