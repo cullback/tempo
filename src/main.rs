@@ -1,11 +1,37 @@
 mod aarch64_backend;
 mod ast;
 mod ir;
+mod parser;
 mod regalloc;
 mod smol_hello;
 mod ssa;
 mod ssa_lowering;
 
+use aarch64_backend::AArch64Backend;
+use ast::AstLowering;
+use std::env;
+use std::fs;
+
 fn main() {
-    smol_hello::write_aarch64_hello().unwrap();
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() < 2 {
+        eprintln!("Usage: {} <input.rb>", args[0]);
+        std::process::exit(1);
+    }
+
+    let input_path = &args[1];
+    let source = fs::read_to_string(input_path).unwrap();
+
+    let program = parser::parse_program(&source).unwrap();
+    println!("AST:\n{}", program);
+
+    let lowering = AstLowering::new();
+    let module = lowering.lower_program(&program);
+    let ir_program = ssa_lowering::lower(&module);
+    let binary = AArch64Backend::compile(&ir_program);
+
+    let input_file = std::path::Path::new(input_path);
+    let output_name = input_file.file_stem().unwrap().to_str().unwrap();
+    AArch64Backend::write_binary(&binary, output_name).unwrap();
 }

@@ -2,14 +2,17 @@ WHITESPACE = _{ " " | "\n" }
 COMMENT    = _{ "#" ~ (!NEWLINE ~ ANY)* }
 
 // simple atoms
-alpha      =  { 'a'..'z' | 'A'..'Z' }
-digit      =  { '0'..'9' }
-identifier = @{ alpha ~ (alpha | digit)* }
-number     = @{ digit+ }
+alpha         =  { 'a'..'z' | 'A'..'Z' }
+digit         =  { '0'..'9' }
+identifier    = @{ (alpha | "_") ~ (alpha | digit | "_")* }
+number        = @{ digit+ }
+string_char   =  { !("\"" | "\\") ~ ANY | "\\" ~ ("n" | "t" | "r" | "\"" | "\\") }
+string_literal = @{ "\"" ~ string_char* ~ "\"" }
 
 expression = {
     function_call
   | number
+  | string_literal
   | identifier
   | function_definition
   | block
@@ -18,10 +21,10 @@ expression = {
 function_arguments = { expression ~ ("," ~ expression)* }
 function_call      = { identifier ~ "(" ~ function_arguments ~ ")" }
 
-block = { "{" ~ assignment* ~ expression ~ "}" }
+block = { "(" ~ assignment* ~ expression ~ ")" }
 
 ident_list          = { identifier ~ ("," ~ identifier)* }
-function_definition = { "|" ~ ident_list ~ "|" ~ expression }
+function_definition = { "|" ~ ident_list? ~ "|" ~ expression }
 
 assignment = { identifier ~ "=" ~ expression }
 
