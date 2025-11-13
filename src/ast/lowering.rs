@@ -53,6 +53,7 @@ impl<'a> AstLowering<'a> {
             }
             Expression::Block(block) => self.lower_block(block),
             Expression::BinaryOp(binop) => self.lower_binary_op(binop),
+            Expression::Conditional(cond) => self.lower_conditional(cond),
         }
     }
 
@@ -160,6 +161,40 @@ impl<'a> AstLowering<'a> {
 
         self.builder.build_binop(result, left, right, op);
         result
+    }
+
+    fn lower_conditional(
+        &mut self,
+        cond: &crate::ast::Conditional<'a>,
+    ) -> Value {
+        let condition_value = self.lower_expression(&cond.condition);
+
+        let then_block = self.builder.push_bb();
+        let else_block = self.builder.push_bb();
+        let merge_block = self.builder.push_bb();
+
+        let result_var = self.builder.push_variable();
+
+        self.builder.build_branch(
+            condition_value,
+            then_block,
+            vec![],
+            else_block,
+            vec![],
+        );
+
+        self.builder.switch_to_block(then_block);
+        let then_value = self.lower_expression(&cond.then_expr);
+        self.builder.build_jump(merge_block, vec![then_value]);
+
+        self.builder.switch_to_block(else_block);
+        let else_value = self.lower_expression(&cond.else_expr);
+        self.builder.build_jump(merge_block, vec![else_value]);
+
+        self.builder.switch_to_block(merge_block);
+        self.builder.add_block_param(merge_block, result_var);
+
+        result_var
     }
 }
 

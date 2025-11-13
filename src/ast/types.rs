@@ -128,6 +128,24 @@ impl fmt::Display for BinaryOp<'_> {
 }
 
 #[derive(Debug)]
+pub struct Conditional<'a> {
+    pub condition: Box<Expression<'a>>,
+    pub then_expr: Box<Expression<'a>>,
+    pub else_expr: Box<Expression<'a>>,
+    pub span: Span<'a>,
+}
+
+impl fmt::Display for Conditional<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "if {} then {} else {}",
+            self.condition, self.then_expr, self.else_expr
+        )
+    }
+}
+
+#[derive(Debug)]
 pub enum Expression<'a> {
     Number(Number<'a>),
     Identifier(Identifier<'a>),
@@ -135,6 +153,7 @@ pub enum Expression<'a> {
     FunctionDefinition(FunctionDefinition<'a>),
     Block(Block<'a>),
     BinaryOp(BinaryOp<'a>),
+    Conditional(Conditional<'a>),
 }
 
 impl fmt::Display for Expression<'_> {
@@ -146,6 +165,7 @@ impl fmt::Display for Expression<'_> {
             Expression::FunctionDefinition(fd) => write!(f, "{}", fd),
             Expression::Block(b) => write!(f, "{}", b),
             Expression::BinaryOp(bo) => write!(f, "{}", bo),
+            Expression::Conditional(c) => write!(f, "{}", c),
         }
     }
 }

@@ -29,6 +29,20 @@ pub enum Instruction {
         src1: Register,
         src2: Register,
     },
+    Label {
+        name: String,
+    },
+    Branch {
+        condition: Register,
+        target: String,
+    },
+    Jump {
+        target: String,
+    },
+    Mov {
+        dest: Register,
+        src: Register,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

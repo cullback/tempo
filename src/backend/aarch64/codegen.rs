@@ -55,5 +55,13 @@ pub fn emit_instruction(instr: &Instruction) -> String {
                 register_name(src2)
             )
         }
+        Instruction::Label { name } => format!("{}:", name),
+        Instruction::Branch { condition, target } => {
+            format!("    cbnz {}, {}", register_name(condition), target)
+        }
+        Instruction::Jump { target } => format!("    b {}", target),
+        Instruction::Mov { dest, src } => {
+            format!("    mov {}, {}", register_name(dest), register_name(src))
+        }
     }
 }

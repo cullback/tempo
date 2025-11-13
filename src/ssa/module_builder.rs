@@ -98,4 +98,25 @@ impl ModuleBuilder {
     pub fn set_data(&mut self, data: Vec<u8>) {
         self.module.data = data;
     }
+
+    pub fn build_branch(
+        &mut self,
+        condition: Value,
+        then_block: BlockId,
+        then_args: Vec<Value>,
+        else_block: BlockId,
+        else_args: Vec<Value>,
+    ) {
+        self.set_terminator(Terminator::Branch(
+            condition, then_block, then_args, else_block, else_args,
+        ));
+    }
+
+    pub fn build_jump(&mut self, target: BlockId, args: Vec<Value>) {
+        self.set_terminator(Terminator::Jump(target, args));
+    }
+
+    pub fn add_block_param(&mut self, block: BlockId, param: Value) {
+        self.module.blocks[block.0].params.push(param);
+    }
 }

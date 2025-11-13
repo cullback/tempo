@@ -2,8 +2,8 @@ use pest::Parser;
 use pest_derive::Parser;
 
 use crate::ast::{
-    Assignment, BinaryOp, BinaryOperator, Block, Expression, FunctionCall,
-    FunctionDefinition, Identifier, Number, Program, Span,
+    Assignment, BinaryOp, BinaryOperator, Block, Conditional, Expression,
+    FunctionCall, FunctionDefinition, Identifier, Number, Program, Span,
 };
 
 #[derive(Parser)]
@@ -152,6 +152,7 @@ fn parse_primary<'a>(
         Rule::function_call => parse_function_call(inner, span),
         Rule::function_definition => parse_function_definition(inner, span),
         Rule::block => parse_block(inner, span),
+        Rule::conditional => parse_conditional(inner, span),
         _ => unreachable!("Unexpected primary rule: {:?}", inner.as_rule()),
     }
 }
@@ -200,6 +201,23 @@ fn parse_function_definition<'a>(
     Ok(Expression::FunctionDefinition(FunctionDefinition {
         parameters,
         body: Box::new(body),
+        span,
+    }))
+}
+
+fn parse_conditional<'a>(
+    pair: pest::iterators::Pair<'a, Rule>,
+    span: Span<'a>,
+) -> Result<Expression<'a>, Box<dyn std::error::Error>> {
+    let mut inner = pair.into_inner();
+    let condition = parse_expression(inner.next().unwrap(), span)?;
+    let then_expr = parse_expression(inner.next().unwrap(), span)?;
+    let else_expr = parse_expression(inner.next().unwrap(), span)?;
+
+    Ok(Expression::Conditional(Conditional {
+        condition: Box::new(condition),
+        then_expr: Box::new(then_expr),
+        else_expr: Box::new(else_expr),
         span,
     }))
 }

@@ -31,6 +31,7 @@ fn main() {
         for instr in &block.instructions {
             println!("  {:?}", instr);
         }
+        println!("  -> {}", block.terminator);
     }
 
     let ir_program = lower(&module);

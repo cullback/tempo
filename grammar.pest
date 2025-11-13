@@ -10,7 +10,8 @@ string_char   =  { !("\"" | "\\") ~ ANY | "\\" ~ ("n" | "t" | "r" | "\"" | "\\")
 string_literal = @{ "\"" ~ string_char* ~ "\"" }
 
 primary = {
-    function_call
+    conditional
+  | function_call
   | number
   | string_literal
   | identifier
@@ -29,6 +30,8 @@ div_op = { "/" }
 
 function_arguments = { expression ~ ("," ~ expression)* }
 function_call      = { identifier ~ "(" ~ function_arguments ~ ")" }
+
+conditional = { "if" ~ expression ~ "then" ~ expression ~ "else" ~ expression }
 
 block = { "(" ~ assignment* ~ expression ~ ")" }
 

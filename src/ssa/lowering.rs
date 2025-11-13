@@ -27,7 +27,23 @@ pub fn lower(module: &Module) -> ir::Program {
     let mut allocator = RegisterAllocator::new();
     let syscall_positions = analyze_syscall_usage(module);
 
-    for block in &module.blocks {
+    let mut block_param_regs: HashMap<(usize, usize), ir::Register> =
+        HashMap::new();
+
+    for (block_id, block) in module.blocks.iter().enumerate() {
+        for (param_idx, param) in block.params.iter().enumerate() {
+            let vreg = VReg(param.0 as u32);
+            let physical = allocator.allocate(vreg);
+            block_param_regs.insert((block_id, param_idx), physical);
+            value_to_reg.insert(*param, physical);
+        }
+    }
+
+    for (block_id, block) in module.blocks.iter().enumerate() {
+        instructions.push(ir::Instruction::Label {
+            name: format!(".Lblock{}", block_id),
+        });
+
         for instr in &block.instructions {
             match instr {
                 Instruction::Const(dest, val) => {
@@ -139,6 +155,67 @@ pub fn lower(module: &Module) -> ir::Program {
                     instructions.push(ir_instr);
                     value_to_reg.insert(*dest, dest_reg);
                 }
+            }
+        }
+
+        use crate::ssa::Terminator;
+        match &block.terminator {
+            Terminator::None | Terminator::ReturnVoid => {}
+            Terminator::Return(_) => {}
+            Terminator::Jump(target, args) => {
+                for (arg_idx, arg_value) in args.iter().enumerate() {
+                    let src_reg = value_to_reg[arg_value];
+                    let dest_reg = block_param_regs[&(target.0, arg_idx)];
+                    if src_reg != dest_reg {
+                        instructions.push(ir::Instruction::Mov {
+                            dest: dest_reg,
+                            src: src_reg,
+                        });
+                    }
+                }
+                instructions.push(ir::Instruction::Jump {
+                    target: format!(".Lblock{}", target.0),
+                });
+            }
+            Terminator::Branch(
+                cond,
+                then_block,
+                then_args,
+                else_block,
+                else_args,
+            ) => {
+                let cond_reg = value_to_reg[cond];
+
+                for (arg_idx, arg_value) in then_args.iter().enumerate() {
+                    let src_reg = value_to_reg[arg_value];
+                    let dest_reg = block_param_regs[&(then_block.0, arg_idx)];
+                    if src_reg != dest_reg {
+                        instructions.push(ir::Instruction::Mov {
+                            dest: dest_reg,
+                            src: src_reg,
+                        });
+                    }
+                }
+
+                instructions.push(ir::Instruction::Branch {
+                    condition: cond_reg,
+                    target: format!(".Lblock{}", then_block.0),
+                });
+
+                for (arg_idx, arg_value) in else_args.iter().enumerate() {
+                    let src_reg = value_to_reg[arg_value];
+                    let dest_reg = block_param_regs[&(else_block.0, arg_idx)];
+                    if src_reg != dest_reg {
+                        instructions.push(ir::Instruction::Mov {
+                            dest: dest_reg,
+                            src: src_reg,
+                        });
+                    }
+                }
+
+                instructions.push(ir::Instruction::Jump {
+                    target: format!(".Lblock{}", else_block.0),
+                });
             }
         }
     }
