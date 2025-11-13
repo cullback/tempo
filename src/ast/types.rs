@@ -144,14 +144,14 @@ pub struct FunctionDefinition<'a> {
 
 impl fmt::Display for FunctionDefinition<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "fn(")?;
+        write!(f, "|")?;
         for (i, param) in self.parameters.iter().enumerate() {
             if i > 0 {
                 write!(f, ", ")?;
             }
             write!(f, "{}", param)?;
         }
-        write!(f, ") {{ {} }}", self.body)
+        write!(f, "| {}", self.body)
     }
 }
 
@@ -164,11 +164,11 @@ pub struct Block<'a> {
 
 impl fmt::Display for Block<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "{{")?;
+        writeln!(f, "(")?;
         for assignment in &self.assignments {
             writeln!(f, "  {}", assignment)?;
         }
         writeln!(f, "  {}", self.expression)?;
-        write!(f, "}}")
+        write!(f, ")")
     }
 }

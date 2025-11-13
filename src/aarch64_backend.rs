@@ -164,102 +164,126 @@ mod tests {
         let span = Span::new(source);
 
         let program = Program {
-            assignments: vec![
-                Assignment {
-                    identifier: Identifier {
-                        name: "fd".to_string(),
-                        span,
-                    },
-                    expression: Box::new(Expression::Number(Number {
-                        value: 1,
-                        span,
-                    })),
+            assignments: vec![Assignment {
+                identifier: Identifier {
+                    name: "main".to_string(),
                     span,
                 },
-                Assignment {
-                    identifier: Identifier {
-                        name: "msg".to_string(),
-                        span,
-                    },
-                    expression: Box::new(Expression::FunctionCall(
-                        FunctionCall {
-                            function_name: Identifier {
-                                name: "string_literal".to_string(),
-                                span,
-                            },
-                            arguments: vec![Expression::Identifier(
-                                Identifier {
-                                    name: "Hello World\n".to_string(),
+                expression: Box::new(Expression::FunctionDefinition(
+                    FunctionDefinition {
+                        parameters: vec![],
+                        body: Box::new(Expression::Block(Block {
+                            assignments: vec![
+                                Assignment {
+                                    identifier: Identifier {
+                                        name: "fd".to_string(),
+                                        span,
+                                    },
+                                    expression: Box::new(Expression::Number(
+                                        Number { value: 1, span },
+                                    )),
                                     span,
                                 },
-                            )],
-                            span,
-                        },
-                    )),
-                    span,
-                },
-                Assignment {
-                    identifier: Identifier {
-                        name: "len".to_string(),
-                        span,
-                    },
-                    expression: Box::new(Expression::Number(Number {
-                        value: 12,
-                        span,
-                    })),
-                    span,
-                },
-                Assignment {
-                    identifier: Identifier {
-                        name: "_".to_string(),
-                        span,
-                    },
-                    expression: Box::new(Expression::FunctionCall(
-                        FunctionCall {
-                            function_name: Identifier {
-                                name: "write".to_string(),
-                                span,
-                            },
-                            arguments: vec![
-                                Expression::Identifier(Identifier {
-                                    name: "fd".to_string(),
+                                Assignment {
+                                    identifier: Identifier {
+                                        name: "msg".to_string(),
+                                        span,
+                                    },
+                                    expression: Box::new(
+                                        Expression::FunctionCall(
+                                            FunctionCall {
+                                                function_name: Identifier {
+                                                    name: "string_literal"
+                                                        .to_string(),
+                                                    span,
+                                                },
+                                                arguments: vec![
+                                                    Expression::Identifier(
+                                                        Identifier {
+                                                            name:
+                                                                "Hello World\n"
+                                                                    .to_string(),
+                                                            span,
+                                                        },
+                                                    ),
+                                                ],
+                                                span,
+                                            },
+                                        ),
+                                    ),
                                     span,
-                                }),
-                                Expression::Identifier(Identifier {
-                                    name: "msg".to_string(),
+                                },
+                                Assignment {
+                                    identifier: Identifier {
+                                        name: "len".to_string(),
+                                        span,
+                                    },
+                                    expression: Box::new(Expression::Number(
+                                        Number { value: 12, span },
+                                    )),
                                     span,
-                                }),
-                                Expression::Identifier(Identifier {
-                                    name: "len".to_string(),
+                                },
+                                Assignment {
+                                    identifier: Identifier {
+                                        name: "_".to_string(),
+                                        span,
+                                    },
+                                    expression: Box::new(
+                                        Expression::FunctionCall(
+                                            FunctionCall {
+                                                function_name: Identifier {
+                                                    name: "write".to_string(),
+                                                    span,
+                                                },
+                                                arguments: vec![
+                                                    Expression::Identifier(
+                                                        Identifier {
+                                                            name: "fd"
+                                                                .to_string(),
+                                                            span,
+                                                        },
+                                                    ),
+                                                    Expression::Identifier(
+                                                        Identifier {
+                                                            name: "msg"
+                                                                .to_string(),
+                                                            span,
+                                                        },
+                                                    ),
+                                                    Expression::Identifier(
+                                                        Identifier {
+                                                            name: "len"
+                                                                .to_string(),
+                                                            span,
+                                                        },
+                                                    ),
+                                                ],
+                                                span,
+                                            },
+                                        ),
+                                    ),
                                     span,
-                                }),
+                                },
                             ],
+                            expression: Box::new(Expression::FunctionCall(
+                                FunctionCall {
+                                    function_name: Identifier {
+                                        name: "exit".to_string(),
+                                        span,
+                                    },
+                                    arguments: vec![Expression::Number(
+                                        Number { value: 0, span },
+                                    )],
+                                    span,
+                                },
+                            )),
                             span,
-                        },
-                    )),
-                    span,
-                },
-                Assignment {
-                    identifier: Identifier {
-                        name: "_exit".to_string(),
+                        })),
                         span,
                     },
-                    expression: Box::new(Expression::FunctionCall(
-                        FunctionCall {
-                            function_name: Identifier {
-                                name: "exit".to_string(),
-                                span,
-                            },
-                            arguments: vec![Expression::Number(Number {
-                                value: 0,
-                                span,
-                            })],
-                            span,
-                        },
-                    )),
-                    span,
-                },
-            ],
+                )),
+                span,
+            }],
             span,
         };
 

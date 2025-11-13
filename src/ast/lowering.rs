@@ -1,5 +1,6 @@
 use crate::ast::types::{
-    Assignment, Block, Expression, FunctionCall, Identifier, Number, Program,
+    Assignment, Block, Expression, FunctionCall, FunctionDefinition,
+    Identifier, Number, Program,
 };
 use crate::ssa::{
     Module, ModuleBuilder, SYS_EXIT, SYS_WRITE, Terminator, Value,
@@ -47,8 +48,8 @@ impl<'a> AstLowering<'a> {
             Expression::Number(num) => self.lower_number(num),
             Expression::Identifier(ident) => self.lower_identifier(ident),
             Expression::FunctionCall(call) => self.lower_function_call(call),
-            Expression::FunctionDefinition(_) => {
-                panic!("Function definitions not yet implemented in lowering")
+            Expression::FunctionDefinition(func_def) => {
+                self.lower_function_definition(func_def)
             }
             Expression::Block(block) => self.lower_block(block),
         }
@@ -130,6 +131,18 @@ impl<'a> AstLowering<'a> {
             self.lower_assignment(assignment);
         }
         self.lower_expression(&block.expression)
+    }
+
+    fn lower_function_definition(
+        &mut self,
+        func_def: &FunctionDefinition<'a>,
+    ) -> Value {
+        assert_eq!(
+            func_def.parameters.len(),
+            0,
+            "Function parameters not yet supported in lowering"
+        );
+        self.lower_expression(&func_def.body)
     }
 }
 
