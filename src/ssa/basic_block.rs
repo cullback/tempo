@@ -62,7 +62,7 @@ impl core::fmt::Display for Terminator {
 }
 
 /// A basic block is a sequence of instructions that ends with a terminator.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BasicBlock {
     pub params: Vec<Value>,
     pub instructions: Vec<Instruction>,

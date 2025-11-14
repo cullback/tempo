@@ -1,7 +1,7 @@
 use crate::ssa::basic_block::BasicBlock;
 use std::collections::HashMap;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Function {
     pub name: String,
     pub params: Vec<String>,
@@ -9,7 +9,7 @@ pub struct Function {
 }
 
 /// A module contains functions and a data section.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct Module {
     pub blocks: Vec<BasicBlock>,
     pub functions: HashMap<String, Function>,

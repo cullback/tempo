@@ -37,9 +37,24 @@ fn main() {
         std::process::exit(1);
     });
 
+    println!("Program AST:");
+    println!("{}", program);
+    println!();
+
     let lowering = AstLowering::new();
     let module = lowering.lower_program(&program);
+
+    println!("SSA:");
+    println!("{:#?}", module);
+    println!();
+
     let ir_program = lower(&module);
+
+    println!("IR:");
+    for instr in &ir_program.instructions {
+        println!("  {:?}", instr);
+    }
+    println!();
 
     let binary = generate_elf_from_ir(&ir_program);
 
