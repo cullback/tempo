@@ -28,7 +28,7 @@ impl fmt::Display for Module {
         if !self.blocks.is_empty() {
             writeln!(f, "Entry blocks:")?;
             for (i, block) in self.blocks.iter().enumerate() {
-                writeln!(f, "  block{}:", i)?;
+                writeln!(f, "  b{}:", i)?;
                 for line in format!("{}", block).lines() {
                     writeln!(f, "    {}", line)?;
                 }
@@ -58,7 +58,7 @@ impl fmt::Display for Module {
 impl fmt::Display for Function {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (i, block) in self.blocks.iter().enumerate() {
-            writeln!(f, "block{}:", i)?;
+            writeln!(f, "b{}:", i)?;
             for line in format!("{}", block).lines() {
                 writeln!(f, "  {}", line)?;
             }
