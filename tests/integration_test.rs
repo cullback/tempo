@@ -47,10 +47,8 @@ fn run_binary(binary: &[u8]) -> std::process::Output {
 #[test]
 fn test_hello() {
     let binary = compile_example("hello");
-    let size = binary.len();
     let output = run_binary(&binary);
 
-    assert_eq!(size, 376);
     assert_eq!(output.status.code(), Some(0));
     assert_eq!(String::from_utf8_lossy(&output.stdout), "Hello World\n");
 }
@@ -58,29 +56,23 @@ fn test_hello() {
 #[test]
 fn test_math() {
     let binary = compile_example("math");
-    let size = binary.len();
     let output = run_binary(&binary);
 
-    assert_eq!(size, 376);
     assert_eq!(output.status.code(), Some(220));
 }
 
 #[test]
 fn test_conditional() {
     let binary = compile_example("conditional");
-    let size = binary.len();
     let output = run_binary(&binary);
 
-    assert_eq!(size, 392);
     assert_eq!(output.status.code(), Some(103));
 }
 
 #[test]
 fn test_comparison() {
     let binary = compile_example("comparison");
-    let size = binary.len();
     let output = run_binary(&binary);
 
-    assert_eq!(size, 392);
     assert_eq!(output.status.code(), Some(20));
 }

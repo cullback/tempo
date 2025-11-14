@@ -25,6 +25,8 @@ fn main() {
     let lowering = AstLowering::new();
     let module = lowering.lower_program(&program);
 
+    println!("\nModule data: {} bytes", module.data.len());
+
     println!("\nSSA IR:");
     for (i, block) in module.blocks.iter().enumerate() {
         println!("Block {}:", i);
@@ -40,6 +42,11 @@ fn main() {
     for (i, instr) in ir_program.instructions.iter().enumerate() {
         println!("{:3}: {:?}", i, instr);
     }
+    println!(
+        "\nData section ({} bytes): {:?}",
+        ir_program.data.len(),
+        ir_program.data
+    );
 
     let asm = compile(&ir_program);
 

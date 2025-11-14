@@ -47,7 +47,6 @@ impl<'a> AstLowering<'a> {
         }
 
         let functions_clone = self.functions.clone();
-        let data_clone = self.data.clone();
 
         let block = self.builder.push_bb();
         self.builder.switch_to_block(block);
@@ -58,6 +57,8 @@ impl<'a> AstLowering<'a> {
 
         self.builder.set_terminator(Terminator::ReturnVoid);
         let mut module = self.builder.build_module();
+
+        let data_clone = self.data.clone();
         module.data = data_clone.clone();
 
         for (func_name, (params, body)) in &functions_clone {
