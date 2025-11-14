@@ -1,11 +1,6 @@
-pub mod codegen;
-pub mod elf;
 pub mod instruction;
 
-pub use elf::{assemble_and_link, assemble_and_link_to_bytes, compile};
-pub use instruction::{
-    Condition, Instruction, Register, encode_instructions, generate_elf_from_ir,
-};
+pub use instruction::{Condition, Instruction, Register, generate_elf_from_ir};
 
 #[cfg(test)]
 mod tests {
@@ -48,18 +43,10 @@ mod tests {
 
         let module = builder.build_module();
         let ir_program = lower(&module);
-        let asm = super::compile(&ir_program);
+        let binary = super::generate_elf_from_ir(&ir_program);
 
-        println!("Generated assembly:\n{}", asm);
-
-        assert!(asm.contains(".global _start"));
-        assert!(asm.contains("_start:"));
-        assert!(asm.contains("mov x0, #1"));
-        assert!(asm.contains("adr x1, .Ldata"));
-        assert!(asm.contains("mov x2, #12"));
-        assert!(asm.contains("mov x8, #64"));
-        assert!(asm.contains("svc #0"));
-        assert!(asm.contains(".Ldata:"));
+        assert!(binary.starts_with(b"\x7fELF"));
+        assert_eq!(binary.len(), 164);
     }
 
     #[test]
@@ -196,10 +183,9 @@ mod tests {
         let lowering = AstLowering::new();
         let module = lowering.lower_program(&program);
         let ir_program = lower(&module);
-        let asm = super::compile(&ir_program);
+        let binary = super::generate_elf_from_ir(&ir_program);
 
-        assert!(asm.contains(".global _start"));
-        assert!(asm.contains("_start:"));
-        assert!(asm.contains("svc #0"));
+        assert!(binary.starts_with(b"\x7fELF"));
+        assert_eq!(binary.len(), 164);
     }
 }

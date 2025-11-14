@@ -267,7 +267,7 @@ impl<'a> AstLowering<'a> {
 
         let entry_block = func_builder.push_bb();
 
-        for (i, param_name) in params.iter().enumerate() {
+        for param_name in params.iter() {
             let param_value = func_builder.push_variable();
             func_builder.add_block_param(entry_block, param_value);
             func_bindings.insert(param_name.clone(), param_value);

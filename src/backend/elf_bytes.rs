@@ -62,42 +62,6 @@ fn write_program_header(
     buf.extend_from_slice(&p_align.to_le_bytes());
 }
 
-fn generate_hello_code() -> Vec<u8> {
-    let mut code = Vec::new();
-
-    // mov x0, #1
-    code.extend_from_slice(&0xd2800020u32.to_le_bytes());
-
-    // adr x1, msg (data is right after code, 32 bytes away)
-    // PC when adr executes is 0x40007c, data will be at 0x400098
-    // offset = 28 bytes
-    let data_offset = 28i32;
-    let immlo = (data_offset & 0x3) as u32;
-    let immhi = ((data_offset >> 2) & 0x7FFFF) as u32;
-    let adr_instr = 0x10000000 | (immlo << 29) | (immhi << 5) | 1; // x1
-    code.extend_from_slice(&adr_instr.to_le_bytes());
-
-    // mov x2, #13
-    code.extend_from_slice(&0xd28001a2u32.to_le_bytes());
-
-    // mov x8, #64
-    code.extend_from_slice(&0xd2800808u32.to_le_bytes());
-
-    // svc #0
-    code.extend_from_slice(&0xd4000001u32.to_le_bytes());
-
-    // mov x0, #0
-    code.extend_from_slice(&0xd2800000u32.to_le_bytes());
-
-    // mov x8, #93
-    code.extend_from_slice(&0xd2800ba8u32.to_le_bytes());
-
-    // svc #0
-    code.extend_from_slice(&0xd4000001u32.to_le_bytes());
-
-    code
-}
-
 pub fn generate_elf(code: &[u8], data: &[u8]) -> Vec<u8> {
     let mut elf = Vec::new();
 
@@ -129,10 +93,4 @@ pub fn generate_elf(code: &[u8], data: &[u8]) -> Vec<u8> {
     elf.extend_from_slice(data);
 
     elf
-}
-
-pub fn generate_hello_elf() -> Vec<u8> {
-    let code = generate_hello_code();
-    let data = b"Hello World\n\0";
-    generate_elf(&code, data)
 }

@@ -491,7 +491,6 @@ pub fn generate_elf_from_ir(program: &crate::backend::ir::Program) -> Vec<u8> {
     }
 
     // Base addresses from elf_bytes
-    let code_offset = 0x78u64;
     let code_vaddr = 0x400078u64;
     let data_vaddr = code_vaddr + code_size as u64;
 
@@ -500,7 +499,7 @@ pub fn generate_elf_from_ir(program: &crate::backend::ir::Program) -> Vec<u8> {
     for instr in &mut instructions {
         match instr {
             Instruction::Label { .. } => {} // Labels don't advance PC
-            Instruction::Adr { rd, offset } => {
+            Instruction::Adr { rd: _, offset } => {
                 // Recalculate offset from current PC to data
                 let new_offset = (data_vaddr as i64 - pc as i64) as i32;
                 *offset = new_offset;
