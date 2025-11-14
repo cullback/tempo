@@ -98,11 +98,8 @@ fn generate_hello_code() -> Vec<u8> {
     code
 }
 
-pub fn generate_hello_elf() -> Vec<u8> {
+pub fn generate_elf(code: &[u8], data: &[u8]) -> Vec<u8> {
     let mut elf = Vec::new();
-
-    let code = generate_hello_code();
-    let data = b"Hello World\n\0";
 
     let code_offset = 0x78u64;
     let code_vaddr = 0x400078u64;
@@ -126,10 +123,16 @@ pub fn generate_hello_elf() -> Vec<u8> {
     );
 
     // Write code
-    elf.extend_from_slice(&code);
+    elf.extend_from_slice(code);
 
     // Write data (right after code)
     elf.extend_from_slice(data);
 
     elf
+}
+
+pub fn generate_hello_elf() -> Vec<u8> {
+    let code = generate_hello_code();
+    let data = b"Hello World\n\0";
+    generate_elf(&code, data)
 }

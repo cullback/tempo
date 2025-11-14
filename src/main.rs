@@ -9,7 +9,46 @@ use std::env;
 use std::fs;
 
 fn hello() -> Vec<u8> {
-    backend::generate_hello_elf()
+    use backend::{Instruction, Register};
+
+    let instructions = vec![
+        Instruction::MovImm {
+            rd: Register::X0,
+            imm: 1,
+        },
+        Instruction::Adr {
+            rd: Register::X1,
+            offset: 28,
+        },
+        Instruction::MovImm {
+            rd: Register::X2,
+            imm: 13,
+        },
+        Instruction::MovImm {
+            rd: Register::X8,
+            imm: 64,
+        },
+        Instruction::Svc { imm: 0 },
+        Instruction::MovImm {
+            rd: Register::X0,
+            imm: 0,
+        },
+        Instruction::MovImm {
+            rd: Register::X8,
+            imm: 93,
+        },
+        Instruction::Svc { imm: 0 },
+    ];
+
+    println!("Assembly:");
+    for instr in &instructions {
+        println!("  {}", instr);
+    }
+
+    let code = backend::encode_instructions(&instructions);
+    let data = b"Hello World\n\0";
+
+    backend::elf_bytes::generate_elf(&code, data)
 }
 
 fn main() {

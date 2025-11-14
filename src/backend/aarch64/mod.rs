@@ -1,7 +1,9 @@
 pub mod codegen;
 pub mod elf;
+pub mod instruction;
 
 pub use elf::{assemble_and_link, assemble_and_link_to_bytes, compile};
+pub use instruction::{Instruction, Register, encode_instructions};
 
 #[cfg(test)]
 mod tests {
