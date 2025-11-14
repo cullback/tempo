@@ -25,6 +25,7 @@ fn lower_blocks(
     blocks: &[crate::ssa::basic_block::BasicBlock],
     prefix: &str,
     syscall_positions: &HashMap<Value, usize>,
+    is_entry_point: bool,
 ) -> Vec<ir::Instruction> {
     let mut instructions = Vec::new();
     let mut value_to_reg: HashMap<Value, ir::Register> = HashMap::new();
@@ -287,14 +288,16 @@ fn lower_blocks(
         match &block.terminator {
             Terminator::None | Terminator::ReturnVoid => {}
             Terminator::Return(val) => {
-                let ret_reg = value_to_reg[val];
-                if ret_reg != ir::Register::X0 {
-                    instructions.push(ir::Instruction::Mov {
-                        dest: ir::Register::X0,
-                        src: ret_reg,
-                    });
+                if !is_entry_point {
+                    let ret_reg = value_to_reg[val];
+                    if ret_reg != ir::Register::X0 {
+                        instructions.push(ir::Instruction::Mov {
+                            dest: ir::Register::X0,
+                            src: ret_reg,
+                        });
+                    }
+                    instructions.push(ir::Instruction::Ret);
                 }
-                instructions.push(ir::Instruction::Ret);
             }
             Terminator::Jump(target, args) => {
                 for (arg_idx, arg_value) in args.iter().enumerate() {
@@ -361,19 +364,27 @@ pub fn lower(module: &Module) -> ir::Program {
     let mut instructions = Vec::new();
     let syscall_positions = analyze_syscall_usage(module);
 
-    let main_instructions =
-        lower_blocks(&module.blocks, ".Lblock", &syscall_positions);
-    instructions.extend(main_instructions);
+    if !module.functions.contains_key("main") {
+        let main_instructions =
+            lower_blocks(&module.blocks, ".Lblock", &syscall_positions, true);
+        instructions.extend(main_instructions);
+    }
 
     for (func_name, func) in &module.functions {
         instructions.push(ir::Instruction::Label {
             name: func_name.clone(),
         });
-        let func_syscall_positions = HashMap::new();
+        let func_syscall_positions = analyze_syscall_usage(&Module {
+            blocks: func.blocks.clone(),
+            functions: HashMap::new(),
+            data: vec![],
+        });
+        let is_entry_point = func_name == "main";
         let func_instructions = lower_blocks(
             &func.blocks,
             &format!(".L{}_block", func_name),
             &func_syscall_positions,
+            is_entry_point,
         );
         instructions.extend(func_instructions);
     }

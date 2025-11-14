@@ -3,63 +3,47 @@ mod backend;
 mod ssa;
 
 use ast::{AstLowering, parse_program};
-use backend::{assemble_and_link, compile};
+use backend::generate_elf_from_ir;
 use ssa::lower;
 use std::env;
 use std::fs;
 
-fn hello() -> Vec<u8> {
-    use backend::{Instruction, Register};
+fn main() {
+    let args: Vec<String> = env::args().collect();
 
-    let instructions = vec![
-        Instruction::MovImm {
-            rd: Register::X0,
-            imm: 1,
-        },
-        Instruction::Adr {
-            rd: Register::X1,
-            offset: 28,
-        },
-        Instruction::MovImm {
-            rd: Register::X2,
-            imm: 13,
-        },
-        Instruction::MovImm {
-            rd: Register::X8,
-            imm: 64,
-        },
-        Instruction::Svc { imm: 0 },
-        Instruction::MovImm {
-            rd: Register::X0,
-            imm: 0,
-        },
-        Instruction::MovImm {
-            rd: Register::X8,
-            imm: 93,
-        },
-        Instruction::Svc { imm: 0 },
-    ];
-
-    println!("Assembly:");
-    for instr in &instructions {
-        println!("  {}", instr);
+    if args.len() != 3 {
+        eprintln!("Usage: {} <input.rb> <output>", args[0]);
+        std::process::exit(1);
     }
 
-    let code = backend::encode_instructions(&instructions);
-    let data = b"Hello World\n\0";
+    let input_path = &args[1];
+    let output_path = &args[2];
 
-    backend::elf_bytes::generate_elf(&code, data)
-}
+    let source = fs::read_to_string(input_path).unwrap_or_else(|e| {
+        eprintln!("Failed to read {}: {}", input_path, e);
+        std::process::exit(1);
+    });
 
-fn main() {
-    let binary = hello();
+    let program = parse_program(&source).unwrap_or_else(|e| {
+        eprintln!("Failed to parse: {}", e);
+        std::process::exit(1);
+    });
 
-    fs::write("hello", &binary).expect("Failed to write binary");
+    let lowering = AstLowering::new();
+    let module = lowering.lower_program(&program);
+    let ir_program = lower(&module);
+
+    let binary = generate_elf_from_ir(&ir_program);
+
+    fs::write(output_path, &binary).unwrap_or_else(|e| {
+        eprintln!("Failed to write {}: {}", output_path, e);
+        std::process::exit(1);
+    });
 
     use std::os::unix::fs::PermissionsExt;
-    let mut perms = fs::metadata("hello").unwrap().permissions();
+    let mut perms = fs::metadata(output_path).unwrap().permissions();
     perms.set_mode(0o755);
-    fs::set_permissions("hello", perms).unwrap();
+    fs::set_permissions(output_path, perms).unwrap();
 
-    println!("Created binary: hello");
+    println!("Created binary: {}", output_path);
 }

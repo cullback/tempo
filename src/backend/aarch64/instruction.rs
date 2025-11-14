@@ -286,10 +286,78 @@ impl fmt::Display for Instruction {
 }
 
 pub fn encode_instructions(instructions: &[Instruction]) -> Vec<u8> {
-    instructions
-        .iter()
-        .flat_map(|instr| instr.encode())
-        .collect()
+    use std::collections::HashMap;
+
+    // First pass: calculate label positions
+    let mut label_positions: HashMap<String, usize> = HashMap::new();
+    let mut pc = 0;
+
+    for instr in instructions {
+        match instr {
+            Instruction::Label { name } => {
+                label_positions.insert(name.clone(), pc);
+            }
+            Instruction::Branch { .. }
+            | Instruction::Jump { .. }
+            | Instruction::Call { .. } => {
+                pc += 4; // These are 4 bytes each
+            }
+            _ => {
+                pc += instr.encode().len();
+            }
+        }
+    }
+
+    // Second pass: encode with resolved labels
+    let mut code = Vec::new();
+    let mut current_pc = 0;
+
+    for instr in instructions {
+        match instr {
+            Instruction::Label { .. } => {
+                // Labels don't emit bytes
+            }
+            Instruction::Branch { condition, target } => {
+                let target_pc =
+                    label_positions.get(target).expect("Undefined label");
+                let offset = (*target_pc as i32 - current_pc as i32) / 4;
+
+                // CBNZ condition, offset
+                let encoded = 0x35000000u32
+                    | ((offset as u32 & 0x7ffff) << 5)
+                    | condition.num();
+                code.extend_from_slice(&encoded.to_le_bytes());
+                current_pc += 4;
+            }
+            Instruction::Jump { target } => {
+                let target_pc =
+                    label_positions.get(target).expect("Undefined label");
+                let offset = (*target_pc as i32 - current_pc as i32) / 4;
+
+                // B offset
+                let encoded = 0x14000000u32 | (offset as u32 & 0x3ffffff);
+                code.extend_from_slice(&encoded.to_le_bytes());
+                current_pc += 4;
+            }
+            Instruction::Call { target } => {
+                let target_pc =
+                    label_positions.get(target).expect("Undefined label");
+                let offset = (*target_pc as i32 - current_pc as i32) / 4;
+
+                // BL offset
+                let encoded = 0x94000000u32 | (offset as u32 & 0x3ffffff);
+                code.extend_from_slice(&encoded.to_le_bytes());
+                current_pc += 4;
+            }
+            _ => {
+                let bytes = instr.encode();
+                current_pc += bytes.len();
+                code.extend_from_slice(&bytes);
+            }
+        }
+    }
+
+    code
 }
 
 fn convert_register(reg: &crate::backend::ir::Register) -> Register {
@@ -398,12 +466,55 @@ pub fn from_ir(ir_instr: &crate::backend::ir::Instruction) -> Instruction {
 }
 
 pub fn generate_elf_from_ir(program: &crate::backend::ir::Program) -> Vec<u8> {
-    let instructions: Vec<Instruction> =
+    let mut instructions: Vec<Instruction> =
         program.instructions.iter().map(from_ir).collect();
 
     println!("Assembly:");
     for instr in &instructions {
         println!("  {}", instr);
+    }
+
+    // Calculate where data will be: after code section
+    let mut code_size = 0;
+    for instr in &instructions {
+        match instr {
+            Instruction::Label { .. } => {} // Labels don't emit bytes
+            Instruction::Branch { .. }
+            | Instruction::Jump { .. }
+            | Instruction::Call { .. } => {
+                code_size += 4;
+            }
+            _ => {
+                code_size += instr.encode().len();
+            }
+        }
+    }
+
+    // Base addresses from elf_bytes
+    let code_offset = 0x78u64;
+    let code_vaddr = 0x400078u64;
+    let data_vaddr = code_vaddr + code_size as u64;
+
+    // Fix ADR instructions to point to the actual data location
+    let mut pc = code_vaddr;
+    for instr in &mut instructions {
+        match instr {
+            Instruction::Label { .. } => {} // Labels don't advance PC
+            Instruction::Adr { rd, offset } => {
+                // Recalculate offset from current PC to data
+                let new_offset = (data_vaddr as i64 - pc as i64) as i32;
+                *offset = new_offset;
+                pc += 4;
+            }
+            Instruction::Branch { .. }
+            | Instruction::Jump { .. }
+            | Instruction::Call { .. } => {
+                pc += 4;
+            }
+            _ => {
+                pc += instr.encode().len() as u64;
+            }
+        }
     }
 
     let code = encode_instructions(&instructions);

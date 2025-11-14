@@ -52,6 +52,7 @@ fn test_hello() {
 
     assert_eq!(output.status.code(), Some(0));
     assert_eq!(String::from_utf8_lossy(&output.stdout), "Hello World\n");
+    assert_eq!(binary.len(), 164);
 }
 
 #[test]
@@ -60,6 +61,7 @@ fn test_math() {
     let output = run_binary(&binary);
 
     assert_eq!(output.status.code(), Some(220));
+    assert_eq!(binary.len(), 164);
 }
 
 #[test]
@@ -68,6 +70,7 @@ fn test_conditional() {
     let output = run_binary(&binary);
 
     assert_eq!(output.status.code(), Some(103));
+    assert_eq!(binary.len(), 176);
 }
 
 #[test]
@@ -76,4 +79,5 @@ fn test_comparison() {
     let output = run_binary(&binary);
 
     assert_eq!(output.status.code(), Some(20));
+    assert_eq!(binary.len(), 176);
 }
