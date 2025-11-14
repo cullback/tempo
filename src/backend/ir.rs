@@ -51,6 +51,10 @@ pub enum Instruction {
         dest: Register,
         condition: Condition,
     },
+    Call {
+        target: String,
+    },
+    Ret,
 }
 
 #[derive(Debug, Clone, Copy)]

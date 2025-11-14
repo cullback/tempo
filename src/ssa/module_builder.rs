@@ -119,4 +119,18 @@ impl ModuleBuilder {
     pub fn add_block_param(&mut self, block: BlockId, param: Value) {
         self.module.blocks[block.0].params.push(param);
     }
+
+    pub fn build_call(
+        &mut self,
+        dest: Value,
+        function_name: String,
+        args: Vec<Value>,
+    ) {
+        let id = self.current_block.expect(
+            "Malformed IR: Tried to build call without a basic block selected.",
+        );
+        self.module.blocks[id.0]
+            .instructions
+            .push(Instruction::Call(dest, function_name, args));
+    }
 }

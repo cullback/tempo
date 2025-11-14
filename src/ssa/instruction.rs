@@ -32,4 +32,5 @@ pub enum Instruction {
     Const(Value, u64),
     LoadDataAddr(Value, usize),
     Syscall(Option<Value>, Vec<Value>),
+    Call(Value, String, Vec<Value>),
 }

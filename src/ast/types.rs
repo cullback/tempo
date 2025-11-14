@@ -38,7 +38,7 @@ impl fmt::Display for Program<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Assignment<'a> {
     pub identifier: Identifier<'a>,
     pub expression: Box<Expression<'a>>,
@@ -51,7 +51,7 @@ impl fmt::Display for Assignment<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Identifier<'a> {
     pub name: String,
     pub span: Span<'a>,
@@ -82,7 +82,7 @@ impl fmt::Display for Identifier<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Number<'a> {
     pub value: i64,
     pub span: Span<'a>,
@@ -125,7 +125,7 @@ impl fmt::Display for BinaryOperator {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BinaryOp<'a> {
     pub left: Box<Expression<'a>>,
     pub operator: BinaryOperator,
@@ -139,7 +139,7 @@ impl fmt::Display for BinaryOp<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Conditional<'a> {
     pub condition: Box<Expression<'a>>,
     pub then_expr: Box<Expression<'a>>,
@@ -157,7 +157,7 @@ impl fmt::Display for Conditional<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression<'a> {
     Number(Number<'a>),
     Identifier(Identifier<'a>),
@@ -182,7 +182,7 @@ impl fmt::Display for Expression<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FunctionCall<'a> {
     pub function_name: Identifier<'a>,
     pub arguments: Vec<Expression<'a>>,
@@ -202,7 +202,7 @@ impl fmt::Display for FunctionCall<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FunctionDefinition<'a> {
     pub parameters: Vec<Identifier<'a>>,
     pub body: Box<Expression<'a>>,
@@ -222,7 +222,7 @@ impl fmt::Display for FunctionDefinition<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Block<'a> {
     pub assignments: Vec<Assignment<'a>>,
     pub expression: Box<Expression<'a>>,

@@ -4,12 +4,14 @@ use crate::ast::types::{
 };
 use crate::ssa::{
     Module, ModuleBuilder, SYS_EXIT, SYS_WRITE, Terminator, Value,
+    module::Function,
 };
 use std::collections::HashMap;
 
 pub struct AstLowering<'a> {
     builder: ModuleBuilder,
     bindings: HashMap<String, Value>,
+    functions: HashMap<String, (Vec<String>, Expression<'a>)>,
     data: Vec<u8>,
     _phantom: std::marker::PhantomData<&'a ()>,
 }
@@ -19,12 +21,34 @@ impl<'a> AstLowering<'a> {
         Self {
             builder: ModuleBuilder::default(),
             bindings: HashMap::new(),
+            functions: HashMap::new(),
             data: Vec::new(),
             _phantom: std::marker::PhantomData,
         }
     }
 
     pub fn lower_program(mut self, program: &Program<'a>) -> Module {
+        for assignment in &program.assignments {
+            if let Expression::FunctionDefinition(func_def) =
+                &*assignment.expression
+            {
+                self.functions.insert(
+                    assignment.identifier.name.clone(),
+                    (
+                        func_def
+                            .parameters
+                            .iter()
+                            .map(|p| p.name.clone())
+                            .collect(),
+                        (*func_def.body).clone(),
+                    ),
+                );
+            }
+        }
+
+        let functions_clone = self.functions.clone();
+        let data_clone = self.data.clone();
+
         let block = self.builder.push_bb();
         self.builder.switch_to_block(block);
 
@@ -33,8 +57,21 @@ impl<'a> AstLowering<'a> {
         }
 
         self.builder.set_terminator(Terminator::ReturnVoid);
-        self.builder.set_data(self.data.clone());
-        self.builder.build_module()
+        let mut module = self.builder.build_module();
+        module.data = data_clone.clone();
+
+        for (func_name, (params, body)) in &functions_clone {
+            let func = Self::lower_function_static(
+                func_name.clone(),
+                params.clone(),
+                body,
+                &functions_clone,
+                &data_clone,
+            );
+            module.functions.insert(func_name.clone(), func);
+        }
+
+        module
     }
 
     fn lower_assignment(&mut self, assignment: &Assignment<'a>) {
@@ -75,7 +112,20 @@ impl<'a> AstLowering<'a> {
             "write" => self.lower_write_syscall(call),
             "exit" => self.lower_exit_syscall(call),
             "string_literal" => self.lower_string_literal(call),
-            _ => panic!("Unknown function: {}", call.function_name.name),
+            name => {
+                if self.functions.contains_key(name) {
+                    let args: Vec<Value> = call
+                        .arguments
+                        .iter()
+                        .map(|arg| self.lower_expression(arg))
+                        .collect();
+                    let result = self.builder.push_variable();
+                    self.builder.build_call(result, name.to_string(), args);
+                    result
+                } else {
+                    panic!("Unknown function: {}", name)
+                }
+            }
         }
     }
 
@@ -139,12 +189,13 @@ impl<'a> AstLowering<'a> {
         &mut self,
         func_def: &FunctionDefinition<'a>,
     ) -> Value {
-        assert_eq!(
-            func_def.parameters.len(),
-            0,
-            "Function parameters not yet supported in lowering"
-        );
-        self.lower_expression(&func_def.body)
+        if func_def.parameters.is_empty() {
+            self.lower_expression(&func_def.body)
+        } else {
+            let dummy = self.builder.push_variable();
+            self.builder.load_const(dummy, 0);
+            dummy
+        }
     }
 
     fn lower_binary_op(&mut self, binop: &crate::ast::BinaryOp<'a>) -> Value {
@@ -201,6 +252,48 @@ impl<'a> AstLowering<'a> {
         self.builder.add_block_param(merge_block, result_var);
 
         result_var
+    }
+
+    fn lower_function_static(
+        name: String,
+        params: Vec<String>,
+        body: &Expression<'a>,
+        functions: &HashMap<String, (Vec<String>, Expression<'a>)>,
+        data: &Vec<u8>,
+    ) -> Function {
+        let mut func_builder = ModuleBuilder::default();
+        let mut func_bindings = HashMap::new();
+
+        let entry_block = func_builder.push_bb();
+
+        for (i, param_name) in params.iter().enumerate() {
+            let param_value = func_builder.push_variable();
+            func_builder.add_block_param(entry_block, param_value);
+            func_bindings.insert(param_name.clone(), param_value);
+        }
+
+        func_builder.switch_to_block(entry_block);
+
+        let mut func_lowering = AstLowering {
+            builder: func_builder,
+            bindings: func_bindings,
+            functions: functions.clone(),
+            data: data.clone(),
+            _phantom: std::marker::PhantomData,
+        };
+
+        let return_value = func_lowering.lower_expression(body);
+        func_lowering
+            .builder
+            .set_terminator(Terminator::Return(return_value));
+
+        let module = func_lowering.builder.build_module();
+
+        Function {
+            name,
+            params,
+            blocks: module.blocks,
+        }
     }
 }
 

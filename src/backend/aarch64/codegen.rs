@@ -77,5 +77,9 @@ pub fn emit_instruction(instr: &Instruction) -> String {
             };
             format!("    cset {}, {}", register_name(dest), cond_str)
         }
+        Instruction::Call { target } => {
+            format!("    bl {}", target)
+        }
+        Instruction::Ret => "    ret".to_string(),
     }
 }

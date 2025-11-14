@@ -21,27 +21,44 @@ fn analyze_syscall_usage(module: &Module) -> HashMap<Value, usize> {
     syscall_positions
 }
 
-pub fn lower(module: &Module) -> ir::Program {
+fn lower_blocks(
+    blocks: &[crate::ssa::basic_block::BasicBlock],
+    prefix: &str,
+    syscall_positions: &HashMap<Value, usize>,
+) -> Vec<ir::Instruction> {
     let mut instructions = Vec::new();
     let mut value_to_reg: HashMap<Value, ir::Register> = HashMap::new();
     let mut allocator = RegisterAllocator::new();
-    let syscall_positions = analyze_syscall_usage(module);
 
     let mut block_param_regs: HashMap<(usize, usize), ir::Register> =
         HashMap::new();
 
-    for (block_id, block) in module.blocks.iter().enumerate() {
+    for (block_id, block) in blocks.iter().enumerate() {
         for (param_idx, param) in block.params.iter().enumerate() {
             let vreg = VReg(param.0 as u32);
-            let physical = allocator.allocate(vreg);
+            let physical = if param_idx < 8 {
+                match param_idx {
+                    0 => ir::Register::X0,
+                    1 => ir::Register::X1,
+                    2 => ir::Register::X2,
+                    3 => ir::Register::X3,
+                    4 => ir::Register::X4,
+                    5 => ir::Register::X5,
+                    6 => ir::Register::X6,
+                    7 => ir::Register::X7,
+                    _ => unreachable!(),
+                }
+            } else {
+                allocator.allocate(vreg)
+            };
             block_param_regs.insert((block_id, param_idx), physical);
             value_to_reg.insert(*param, physical);
         }
     }
 
-    for (block_id, block) in module.blocks.iter().enumerate() {
+    for (block_id, block) in blocks.iter().enumerate() {
         instructions.push(ir::Instruction::Label {
-            name: format!(".Lblock{}", block_id),
+            name: format!("{}{}", prefix, block_id),
         });
 
         for instr in &block.instructions {
@@ -105,6 +122,46 @@ pub fn lower(module: &Module) -> ir::Program {
                 }
                 Instruction::Syscall(_result, _args) => {
                     instructions.push(ir::Instruction::Syscall);
+                }
+                Instruction::Call(dest, func_name, args) => {
+                    for (i, arg) in args.iter().enumerate() {
+                        if i < 8 {
+                            let arg_reg = value_to_reg[arg];
+                            let param_reg = match i {
+                                0 => ir::Register::X0,
+                                1 => ir::Register::X1,
+                                2 => ir::Register::X2,
+                                3 => ir::Register::X3,
+                                4 => ir::Register::X4,
+                                5 => ir::Register::X5,
+                                6 => ir::Register::X6,
+                                7 => ir::Register::X7,
+                                _ => unreachable!(),
+                            };
+                            if arg_reg != param_reg {
+                                instructions.push(ir::Instruction::Mov {
+                                    dest: param_reg,
+                                    src: arg_reg,
+                                });
+                            }
+                        }
+                    }
+
+                    instructions.push(ir::Instruction::Call {
+                        target: func_name.clone(),
+                    });
+
+                    let dest_reg = {
+                        let vreg = VReg(dest.0 as u32);
+                        allocator.allocate(vreg)
+                    };
+                    if dest_reg != ir::Register::X0 {
+                        instructions.push(ir::Instruction::Mov {
+                            dest: dest_reg,
+                            src: ir::Register::X0,
+                        });
+                    }
+                    value_to_reg.insert(*dest, dest_reg);
                 }
                 Instruction::Move(dest, src) => {
                     let src_reg = value_to_reg[src];
@@ -228,7 +285,16 @@ pub fn lower(module: &Module) -> ir::Program {
         use crate::ssa::Terminator;
         match &block.terminator {
             Terminator::None | Terminator::ReturnVoid => {}
-            Terminator::Return(_) => {}
+            Terminator::Return(val) => {
+                let ret_reg = value_to_reg[val];
+                if ret_reg != ir::Register::X0 {
+                    instructions.push(ir::Instruction::Mov {
+                        dest: ir::Register::X0,
+                        src: ret_reg,
+                    });
+                }
+                instructions.push(ir::Instruction::Ret);
+            }
             Terminator::Jump(target, args) => {
                 for (arg_idx, arg_value) in args.iter().enumerate() {
                     let src_reg = value_to_reg[arg_value];
@@ -241,7 +307,7 @@ pub fn lower(module: &Module) -> ir::Program {
                     }
                 }
                 instructions.push(ir::Instruction::Jump {
-                    target: format!(".Lblock{}", target.0),
+                    target: format!("{}{}", prefix, target.0),
                 });
             }
             Terminator::Branch(
@@ -266,7 +332,7 @@ pub fn lower(module: &Module) -> ir::Program {
 
                 instructions.push(ir::Instruction::Branch {
                     condition: cond_reg,
-                    target: format!(".Lblock{}", then_block.0),
+                    target: format!("{}{}", prefix, then_block.0),
                 });
 
                 for (arg_idx, arg_value) in else_args.iter().enumerate() {
@@ -281,10 +347,34 @@ pub fn lower(module: &Module) -> ir::Program {
                 }
 
                 instructions.push(ir::Instruction::Jump {
-                    target: format!(".Lblock{}", else_block.0),
+                    target: format!("{}{}", prefix, else_block.0),
                 });
             }
         }
+    }
+
+    instructions
+}
+
+pub fn lower(module: &Module) -> ir::Program {
+    let mut instructions = Vec::new();
+    let syscall_positions = analyze_syscall_usage(module);
+
+    let main_instructions =
+        lower_blocks(&module.blocks, ".Lblock", &syscall_positions);
+    instructions.extend(main_instructions);
+
+    for (func_name, func) in &module.functions {
+        instructions.push(ir::Instruction::Label {
+            name: func_name.clone(),
+        });
+        let func_syscall_positions = HashMap::new();
+        let func_instructions = lower_blocks(
+            &func.blocks,
+            &format!(".L{}_block", func_name),
+            &func_syscall_positions,
+        );
+        instructions.extend(func_instructions);
     }
 
     ir::Program {
