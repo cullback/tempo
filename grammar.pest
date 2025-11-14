@@ -19,7 +19,8 @@ primary = {
   | block
 }
 
-expression = { term ~ ((add_op | sub_op) ~ term)* }
+expression = { comparison ~ ((add_op | sub_op) ~ comparison)* }
+comparison = { term ~ ((eq_op | ne_op | le_op | lt_op | ge_op | gt_op) ~ term)? }
 term = { factor ~ ((mul_op | div_op) ~ factor)* }
 factor = { primary }
 
@@ -27,6 +28,12 @@ add_op = { "+" }
 sub_op = { "-" }
 mul_op = { "*" }
 div_op = { "/" }
+eq_op = { "==" }
+ne_op = { "!=" }
+lt_op = { "<" }
+le_op = { "<=" }
+gt_op = { ">" }
+ge_op = { ">=" }
 
 function_arguments = { expression ~ ("," ~ expression)* }
 function_call      = { identifier ~ "(" ~ function_arguments ~ ")" }

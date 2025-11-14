@@ -100,6 +100,12 @@ pub enum BinaryOperator {
     Subtract,
     Multiply,
     Divide,
+    Eq,
+    NotEq,
+    Lt,
+    Le,
+    Gt,
+    Ge,
 }
 
 impl fmt::Display for BinaryOperator {
@@ -109,6 +115,12 @@ impl fmt::Display for BinaryOperator {
             BinaryOperator::Subtract => write!(f, "-"),
             BinaryOperator::Multiply => write!(f, "*"),
             BinaryOperator::Divide => write!(f, "/"),
+            BinaryOperator::Eq => write!(f, "=="),
+            BinaryOperator::NotEq => write!(f, "!="),
+            BinaryOperator::Lt => write!(f, "<"),
+            BinaryOperator::Le => write!(f, "<="),
+            BinaryOperator::Gt => write!(f, ">"),
+            BinaryOperator::Ge => write!(f, ">="),
         }
     }
 }

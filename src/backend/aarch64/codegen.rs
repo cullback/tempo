@@ -1,4 +1,4 @@
-use crate::backend::ir::{Instruction, Register};
+use crate::backend::ir::{Condition, Instruction, Register};
 
 fn register_name(reg: &Register) -> &'static str {
     match reg {
@@ -62,6 +62,20 @@ pub fn emit_instruction(instr: &Instruction) -> String {
         Instruction::Jump { target } => format!("    b {}", target),
         Instruction::Mov { dest, src } => {
             format!("    mov {}, {}", register_name(dest), register_name(src))
+        }
+        Instruction::Cmp { src1, src2 } => {
+            format!("    cmp {}, {}", register_name(src1), register_name(src2))
+        }
+        Instruction::CSet { dest, condition } => {
+            let cond_str = match condition {
+                Condition::Eq => "eq",
+                Condition::Ne => "ne",
+                Condition::Lt => "lt",
+                Condition::Le => "le",
+                Condition::Gt => "gt",
+                Condition::Ge => "ge",
+            };
+            format!("    cset {}, {}", register_name(dest), cond_str)
         }
     }
 }

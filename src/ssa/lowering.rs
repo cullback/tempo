@@ -128,31 +128,98 @@ pub fn lower(module: &Module) -> ir::Program {
                         allocator.allocate(vreg)
                     };
 
-                    let ir_instr = match op {
-                        crate::ssa::BinaryOp::Add => ir::Instruction::Add {
-                            dest: dest_reg,
-                            src1: left_reg,
-                            src2: right_reg,
-                        },
-                        crate::ssa::BinaryOp::Sub => ir::Instruction::Sub {
-                            dest: dest_reg,
-                            src1: left_reg,
-                            src2: right_reg,
-                        },
-                        crate::ssa::BinaryOp::Mul => ir::Instruction::Mul {
-                            dest: dest_reg,
-                            src1: left_reg,
-                            src2: right_reg,
-                        },
-                        crate::ssa::BinaryOp::Div => ir::Instruction::Div {
-                            dest: dest_reg,
-                            src1: left_reg,
-                            src2: right_reg,
-                        },
+                    match op {
+                        crate::ssa::BinaryOp::Add => {
+                            instructions.push(ir::Instruction::Add {
+                                dest: dest_reg,
+                                src1: left_reg,
+                                src2: right_reg,
+                            });
+                        }
+                        crate::ssa::BinaryOp::Sub => {
+                            instructions.push(ir::Instruction::Sub {
+                                dest: dest_reg,
+                                src1: left_reg,
+                                src2: right_reg,
+                            });
+                        }
+                        crate::ssa::BinaryOp::Mul => {
+                            instructions.push(ir::Instruction::Mul {
+                                dest: dest_reg,
+                                src1: left_reg,
+                                src2: right_reg,
+                            });
+                        }
+                        crate::ssa::BinaryOp::Div => {
+                            instructions.push(ir::Instruction::Div {
+                                dest: dest_reg,
+                                src1: left_reg,
+                                src2: right_reg,
+                            });
+                        }
+                        crate::ssa::BinaryOp::Eq => {
+                            instructions.push(ir::Instruction::Cmp {
+                                src1: left_reg,
+                                src2: right_reg,
+                            });
+                            instructions.push(ir::Instruction::CSet {
+                                dest: dest_reg,
+                                condition: ir::Condition::Eq,
+                            });
+                        }
+                        crate::ssa::BinaryOp::NotEq => {
+                            instructions.push(ir::Instruction::Cmp {
+                                src1: left_reg,
+                                src2: right_reg,
+                            });
+                            instructions.push(ir::Instruction::CSet {
+                                dest: dest_reg,
+                                condition: ir::Condition::Ne,
+                            });
+                        }
+                        crate::ssa::BinaryOp::Lt => {
+                            instructions.push(ir::Instruction::Cmp {
+                                src1: left_reg,
+                                src2: right_reg,
+                            });
+                            instructions.push(ir::Instruction::CSet {
+                                dest: dest_reg,
+                                condition: ir::Condition::Lt,
+                            });
+                        }
+                        crate::ssa::BinaryOp::Le => {
+                            instructions.push(ir::Instruction::Cmp {
+                                src1: left_reg,
+                                src2: right_reg,
+                            });
+                            instructions.push(ir::Instruction::CSet {
+                                dest: dest_reg,
+                                condition: ir::Condition::Le,
+                            });
+                        }
+                        crate::ssa::BinaryOp::Gt => {
+                            instructions.push(ir::Instruction::Cmp {
+                                src1: left_reg,
+                                src2: right_reg,
+                            });
+                            instructions.push(ir::Instruction::CSet {
+                                dest: dest_reg,
+                                condition: ir::Condition::Gt,
+                            });
+                        }
+                        crate::ssa::BinaryOp::Ge => {
+                            instructions.push(ir::Instruction::Cmp {
+                                src1: left_reg,
+                                src2: right_reg,
+                            });
+                            instructions.push(ir::Instruction::CSet {
+                                dest: dest_reg,
+                                condition: ir::Condition::Ge,
+                            });
+                        }
                         _ => panic!("BinOp {:?} not yet implemented", op),
-                    };
+                    }
 
-                    instructions.push(ir_instr);
                     value_to_reg.insert(*dest, dest_reg);
                 }
             }

@@ -17,8 +17,11 @@ pub enum BinaryOp {
     Div,
     And,
     Eq,
+    NotEq,
     Lt,
     Le,
+    Gt,
+    Ge,
 }
 
 /// An instruction that exists in a basic block.

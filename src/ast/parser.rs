@@ -61,13 +61,49 @@ fn parse_expression<'a>(
 ) -> Result<Expression<'a>, Box<dyn std::error::Error>> {
     let mut inner = pair.into_inner();
     let first = inner.next().unwrap();
-    let mut expr = parse_term(first, span)?;
+    let mut expr = parse_comparison(first, span)?;
 
     while let Some(op_pair) = inner.next() {
         let operator = match op_pair.as_rule() {
             Rule::add_op => BinaryOperator::Add,
             Rule::sub_op => BinaryOperator::Subtract,
             _ => unreachable!("Unexpected operator: {:?}", op_pair.as_rule()),
+        };
+
+        let right_pair = inner.next().unwrap();
+        let right = parse_comparison(right_pair, span)?;
+
+        expr = Expression::BinaryOp(BinaryOp {
+            left: Box::new(expr),
+            operator,
+            right: Box::new(right),
+            span,
+        });
+    }
+
+    Ok(expr)
+}
+
+fn parse_comparison<'a>(
+    pair: pest::iterators::Pair<'a, Rule>,
+    span: Span<'a>,
+) -> Result<Expression<'a>, Box<dyn std::error::Error>> {
+    let mut inner = pair.into_inner();
+    let first = inner.next().unwrap();
+    let mut expr = parse_term(first, span)?;
+
+    if let Some(op_pair) = inner.next() {
+        let operator = match op_pair.as_rule() {
+            Rule::eq_op => BinaryOperator::Eq,
+            Rule::ne_op => BinaryOperator::NotEq,
+            Rule::lt_op => BinaryOperator::Lt,
+            Rule::le_op => BinaryOperator::Le,
+            Rule::gt_op => BinaryOperator::Gt,
+            Rule::ge_op => BinaryOperator::Ge,
+            _ => unreachable!(
+                "Unexpected comparison operator: {:?}",
+                op_pair.as_rule()
+            ),
         };
 
         let right_pair = inner.next().unwrap();

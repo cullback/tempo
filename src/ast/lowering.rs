@@ -157,6 +157,12 @@ impl<'a> AstLowering<'a> {
             BinaryOperator::Subtract => crate::ssa::BinaryOp::Sub,
             BinaryOperator::Multiply => crate::ssa::BinaryOp::Mul,
             BinaryOperator::Divide => crate::ssa::BinaryOp::Div,
+            BinaryOperator::Eq => crate::ssa::BinaryOp::Eq,
+            BinaryOperator::NotEq => crate::ssa::BinaryOp::NotEq,
+            BinaryOperator::Lt => crate::ssa::BinaryOp::Lt,
+            BinaryOperator::Le => crate::ssa::BinaryOp::Le,
+            BinaryOperator::Gt => crate::ssa::BinaryOp::Gt,
+            BinaryOperator::Ge => crate::ssa::BinaryOp::Ge,
         };
 
         self.builder.build_binop(result, left, right, op);

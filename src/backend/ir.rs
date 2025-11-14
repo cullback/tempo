@@ -43,6 +43,24 @@ pub enum Instruction {
         dest: Register,
         src: Register,
     },
+    Cmp {
+        src1: Register,
+        src2: Register,
+    },
+    CSet {
+        dest: Register,
+        condition: Condition,
+    },
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Condition {
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
