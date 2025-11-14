@@ -1,7 +1,7 @@
 use std::fs;
 use std::process::Command;
 use tempo::ast::{AstLowering, parse_program};
-use tempo::backend::{assemble_and_link_to_bytes, compile};
+use tempo::backend::generate_elf_from_ir;
 use tempo::ssa::lower;
 
 fn compile_example(name: &str) -> Vec<u8> {
@@ -12,9 +12,8 @@ fn compile_example(name: &str) -> Vec<u8> {
     let lowering = AstLowering::new();
     let module = lowering.lower_program(&program);
     let ir_program = lower(&module);
-    let asm = compile(&ir_program);
 
-    assemble_and_link_to_bytes(&asm).expect("Failed to assemble and link")
+    generate_elf_from_ir(&ir_program)
 }
 
 fn run_binary(binary: &[u8]) -> std::process::Output {

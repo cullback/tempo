@@ -66,11 +66,75 @@ impl fmt::Display for Register {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Instruction {
-    MovImm { rd: Register, imm: u16 },
-    Adr { rd: Register, offset: i32 },
-    Svc { imm: u16 },
+    MovImm {
+        rd: Register,
+        imm: u16,
+    },
+    Adr {
+        rd: Register,
+        offset: i32,
+    },
+    Svc {
+        imm: u16,
+    },
+    Add {
+        rd: Register,
+        rn: Register,
+        rm: Register,
+    },
+    Sub {
+        rd: Register,
+        rn: Register,
+        rm: Register,
+    },
+    Mul {
+        rd: Register,
+        rn: Register,
+        rm: Register,
+    },
+    Div {
+        rd: Register,
+        rn: Register,
+        rm: Register,
+    },
+    Mov {
+        rd: Register,
+        rm: Register,
+    },
+    Cmp {
+        rn: Register,
+        rm: Register,
+    },
+    CSet {
+        rd: Register,
+        cond: Condition,
+    },
+    Label {
+        name: String,
+    },
+    Branch {
+        condition: Register,
+        target: String,
+    },
+    Jump {
+        target: String,
+    },
+    Call {
+        target: String,
+    },
+    Ret,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Condition {
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
 }
 
 impl Instruction {
@@ -94,6 +158,73 @@ impl Instruction {
                 let instr = 0xd4000001u32 | ((*imm as u32) << 5);
                 instr.to_le_bytes().to_vec()
             }
+            Instruction::Add { rd, rn, rm } => {
+                // ADD rd, rn, rm
+                let instr = 0x8b000000u32
+                    | (rm.num() << 16)
+                    | (rn.num() << 5)
+                    | rd.num();
+                instr.to_le_bytes().to_vec()
+            }
+            Instruction::Sub { rd, rn, rm } => {
+                // SUB rd, rn, rm
+                let instr = 0xcb000000u32
+                    | (rm.num() << 16)
+                    | (rn.num() << 5)
+                    | rd.num();
+                instr.to_le_bytes().to_vec()
+            }
+            Instruction::Mul { rd, rn, rm } => {
+                // MUL rd, rn, rm
+                let instr = 0x9b007c00u32
+                    | (rm.num() << 16)
+                    | (rn.num() << 5)
+                    | rd.num();
+                instr.to_le_bytes().to_vec()
+            }
+            Instruction::Div { rd, rn, rm } => {
+                // SDIV rd, rn, rm
+                let instr = 0x9ac00c00u32
+                    | (rm.num() << 16)
+                    | (rn.num() << 5)
+                    | rd.num();
+                instr.to_le_bytes().to_vec()
+            }
+            Instruction::Mov { rd, rm } => {
+                // MOV rd, rm (encoded as ORR rd, xzr, rm)
+                let instr = 0xaa0003e0u32 | (rm.num() << 16) | rd.num();
+                instr.to_le_bytes().to_vec()
+            }
+            Instruction::Cmp { rn, rm } => {
+                // CMP rn, rm (encoded as SUBS xzr, rn, rm)
+                let instr = 0xeb00001fu32 | (rm.num() << 16) | (rn.num() << 5);
+                instr.to_le_bytes().to_vec()
+            }
+            Instruction::CSet { rd, cond } => {
+                // CSET rd, cond
+                let cond_code = match cond {
+                    Condition::Eq => 0,
+                    Condition::Ne => 1,
+                    Condition::Lt => 11,
+                    Condition::Le => 13,
+                    Condition::Gt => 12,
+                    Condition::Ge => 10,
+                };
+                let instr = 0x9a9f07e0u32 | ((cond_code ^ 1) << 12) | rd.num();
+                instr.to_le_bytes().to_vec()
+            }
+            Instruction::Ret => {
+                // RET
+                let instr = 0xd65f03c0u32;
+                instr.to_le_bytes().to_vec()
+            }
+            Instruction::Label { .. }
+            | Instruction::Branch { .. }
+            | Instruction::Jump { .. }
+            | Instruction::Call { .. } => {
+                // These need label resolution, return empty for now
+                vec![]
+            }
         }
     }
 }
@@ -108,6 +239,48 @@ impl fmt::Display for Instruction {
                 write!(f, "adr {}, #{}", rd, offset)
             }
             Instruction::Svc { imm } => write!(f, "svc #{}", imm),
+            Instruction::Add { rd, rn, rm } => {
+                write!(f, "add {}, {}, {}", rd, rn, rm)
+            }
+            Instruction::Sub { rd, rn, rm } => {
+                write!(f, "sub {}, {}, {}", rd, rn, rm)
+            }
+            Instruction::Mul { rd, rn, rm } => {
+                write!(f, "mul {}, {}, {}", rd, rn, rm)
+            }
+            Instruction::Div { rd, rn, rm } => {
+                write!(f, "sdiv {}, {}, {}", rd, rn, rm)
+            }
+            Instruction::Mov { rd, rm } => {
+                write!(f, "mov {}, {}", rd, rm)
+            }
+            Instruction::Cmp { rn, rm } => {
+                write!(f, "cmp {}, {}", rn, rm)
+            }
+            Instruction::CSet { rd, cond } => {
+                let cond_str = match cond {
+                    Condition::Eq => "eq",
+                    Condition::Ne => "ne",
+                    Condition::Lt => "lt",
+                    Condition::Le => "le",
+                    Condition::Gt => "gt",
+                    Condition::Ge => "ge",
+                };
+                write!(f, "cset {}, {}", rd, cond_str)
+            }
+            Instruction::Label { name } => {
+                write!(f, "{}:", name)
+            }
+            Instruction::Branch { condition, target } => {
+                write!(f, "cbnz {}, {}", condition, target)
+            }
+            Instruction::Jump { target } => {
+                write!(f, "b {}", target)
+            }
+            Instruction::Call { target } => {
+                write!(f, "bl {}", target)
+            }
+            Instruction::Ret => write!(f, "ret"),
         }
     }
 }
@@ -117,4 +290,122 @@ pub fn encode_instructions(instructions: &[Instruction]) -> Vec<u8> {
         .iter()
         .flat_map(|instr| instr.encode())
         .collect()
+}
+
+fn convert_register(reg: &crate::backend::ir::Register) -> Register {
+    match reg {
+        crate::backend::ir::Register::X0 => Register::X0,
+        crate::backend::ir::Register::X1 => Register::X1,
+        crate::backend::ir::Register::X2 => Register::X2,
+        crate::backend::ir::Register::X3 => Register::X3,
+        crate::backend::ir::Register::X4 => Register::X4,
+        crate::backend::ir::Register::X5 => Register::X5,
+        crate::backend::ir::Register::X6 => Register::X6,
+        crate::backend::ir::Register::X7 => Register::X7,
+        crate::backend::ir::Register::X8 => Register::X8,
+    }
+}
+
+fn convert_condition(cond: &crate::backend::ir::Condition) -> Condition {
+    match cond {
+        crate::backend::ir::Condition::Eq => Condition::Eq,
+        crate::backend::ir::Condition::Ne => Condition::Ne,
+        crate::backend::ir::Condition::Lt => Condition::Lt,
+        crate::backend::ir::Condition::Le => Condition::Le,
+        crate::backend::ir::Condition::Gt => Condition::Gt,
+        crate::backend::ir::Condition::Ge => Condition::Ge,
+    }
+}
+
+pub fn from_ir(ir_instr: &crate::backend::ir::Instruction) -> Instruction {
+    match ir_instr {
+        crate::backend::ir::Instruction::MovImm { dest, value } => {
+            Instruction::MovImm {
+                rd: convert_register(dest),
+                imm: *value as u16,
+            }
+        }
+        crate::backend::ir::Instruction::AdrPcRel { dest, offset } => {
+            Instruction::Adr {
+                rd: convert_register(dest),
+                offset: *offset,
+            }
+        }
+        crate::backend::ir::Instruction::Syscall => Instruction::Svc { imm: 0 },
+        crate::backend::ir::Instruction::Add { dest, src1, src2 } => {
+            Instruction::Add {
+                rd: convert_register(dest),
+                rn: convert_register(src1),
+                rm: convert_register(src2),
+            }
+        }
+        crate::backend::ir::Instruction::Sub { dest, src1, src2 } => {
+            Instruction::Sub {
+                rd: convert_register(dest),
+                rn: convert_register(src1),
+                rm: convert_register(src2),
+            }
+        }
+        crate::backend::ir::Instruction::Mul { dest, src1, src2 } => {
+            Instruction::Mul {
+                rd: convert_register(dest),
+                rn: convert_register(src1),
+                rm: convert_register(src2),
+            }
+        }
+        crate::backend::ir::Instruction::Div { dest, src1, src2 } => {
+            Instruction::Div {
+                rd: convert_register(dest),
+                rn: convert_register(src1),
+                rm: convert_register(src2),
+            }
+        }
+        crate::backend::ir::Instruction::Mov { dest, src } => {
+            Instruction::Mov {
+                rd: convert_register(dest),
+                rm: convert_register(src),
+            }
+        }
+        crate::backend::ir::Instruction::Cmp { src1, src2 } => {
+            Instruction::Cmp {
+                rn: convert_register(src1),
+                rm: convert_register(src2),
+            }
+        }
+        crate::backend::ir::Instruction::CSet { dest, condition } => {
+            Instruction::CSet {
+                rd: convert_register(dest),
+                cond: convert_condition(condition),
+            }
+        }
+        crate::backend::ir::Instruction::Label { name } => {
+            Instruction::Label { name: name.clone() }
+        }
+        crate::backend::ir::Instruction::Branch { condition, target } => {
+            Instruction::Branch {
+                condition: convert_register(condition),
+                target: target.clone(),
+            }
+        }
+        crate::backend::ir::Instruction::Jump { target } => Instruction::Jump {
+            target: target.clone(),
+        },
+        crate::backend::ir::Instruction::Call { target } => Instruction::Call {
+            target: target.clone(),
+        },
+        crate::backend::ir::Instruction::Ret => Instruction::Ret,
+    }
+}
+
+pub fn generate_elf_from_ir(program: &crate::backend::ir::Program) -> Vec<u8> {
+    let instructions: Vec<Instruction> =
+        program.instructions.iter().map(from_ir).collect();
+
+    println!("Assembly:");
+    for instr in &instructions {
+        println!("  {}", instr);
+    }
+
+    let code = encode_instructions(&instructions);
+    crate::backend::elf_bytes::generate_elf(&code, &program.data)
 }
