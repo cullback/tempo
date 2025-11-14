@@ -45,7 +45,7 @@ fn main() {
     let module = lowering.lower_program(&program);
 
     println!("SSA:");
-    println!("{:#?}", module);
+    println!("{}", module);
     println!();
 
     let ir_program = lower(&module);

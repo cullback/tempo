@@ -68,3 +68,26 @@ pub struct BasicBlock {
     pub instructions: Vec<Instruction>,
     pub terminator: Terminator,
 }
+
+impl core::fmt::Display for BasicBlock {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        if !self.params.is_empty() {
+            write!(f, "params: ")?;
+            for (i, param) in self.params.iter().enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", param)?;
+            }
+            writeln!(f)?;
+        }
+
+        for instr in &self.instructions {
+            writeln!(f, "{}", instr)?;
+        }
+
+        write!(f, "{}", self.terminator)?;
+
+        Ok(())
+    }
+}
