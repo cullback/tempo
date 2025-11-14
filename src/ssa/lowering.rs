@@ -53,6 +53,7 @@ fn lower_blocks(
             };
             block_param_regs.insert((block_id, param_idx), physical);
             value_to_reg.insert(*param, physical);
+            allocator.reserve(vreg, physical);
         }
     }
 

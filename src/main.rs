@@ -29,11 +29,23 @@ fn main() {
 
     println!("\nSSA IR:");
     for (i, block) in module.blocks.iter().enumerate() {
-        println!("Block {}:", i);
+        println!("Block {} (params: {:?}):", i, block.params);
         for instr in &block.instructions {
             println!("  {:?}", instr);
         }
         println!("  -> {}", block.terminator);
+    }
+
+    println!("\nFunctions:");
+    for (name, func) in &module.functions {
+        println!("Function '{}' (params: {:?}):", name, func.params);
+        for (i, block) in func.blocks.iter().enumerate() {
+            println!("  Block {} (params: {:?}):", i, block.params);
+            for instr in &block.instructions {
+                println!("    {:?}", instr);
+            }
+            println!("    -> {}", block.terminator);
+        }
     }
 
     let ir_program = lower(&module);
