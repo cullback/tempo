@@ -6,7 +6,7 @@ pub struct BlockId(pub usize);
 
 impl core::fmt::Display for BlockId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "${}", self.0)
+        write!(f, "b{}", self.0)
     }
 }
 
