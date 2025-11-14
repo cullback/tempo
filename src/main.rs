@@ -11,13 +11,21 @@ use std::fs;
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() != 3 {
-        eprintln!("Usage: {} <input.rb> <output>", args[0]);
+    if args.len() < 2 || args.len() > 3 {
+        eprintln!("Usage: {} <input.rb> [output]", args[0]);
         std::process::exit(1);
     }
 
     let input_path = &args[1];
-    let output_path = &args[2];
+    let output_path = if args.len() == 3 {
+        args[2].clone()
+    } else {
+        std::path::Path::new(input_path)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("output")
+            .to_string()
+    };
 
     let source = fs::read_to_string(input_path).unwrap_or_else(|e| {
         eprintln!("Failed to read {}: {}", input_path, e);
@@ -35,15 +43,15 @@ fn main() {
 
     let binary = generate_elf_from_ir(&ir_program);
 
-    fs::write(output_path, &binary).unwrap_or_else(|e| {
+    fs::write(&output_path, &binary).unwrap_or_else(|e| {
         eprintln!("Failed to write {}: {}", output_path, e);
         std::process::exit(1);
     });
 
     use std::os::unix::fs::PermissionsExt;
-    let mut perms = fs::metadata(output_path).unwrap().permissions();
+    let mut perms = fs::metadata(&output_path).unwrap().permissions();
     perms.set_mode(0o755);
-    fs::set_permissions(output_path, perms).unwrap();
+    fs::set_permissions(&output_path, perms).unwrap();
 
     println!("Created binary: {}", output_path);
 }
