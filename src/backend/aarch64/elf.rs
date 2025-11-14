@@ -70,7 +70,56 @@ pub fn assemble_and_link(asm: &str, output_path: &str) -> std::io::Result<()> {
     }
 
     std::fs::remove_file(&obj_path)?;
+    std::fs::remove_file(&asm_path)?;
 
-    println!("Created {} (from {})", output_path, asm_path);
+    println!("Created {}", output_path);
     Ok(())
+}
+
+pub fn assemble_and_link_to_bytes(asm: &str) -> std::io::Result<Vec<u8>> {
+    use std::process::Stdio;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let id = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let temp_obj = format!("/tmp/tempo_{}_{}.o", std::process::id(), id);
+    let temp_bin = format!("/tmp/tempo_{}_{}", std::process::id(), id);
+
+    let mut as_child = Command::new("as")
+        .args(&["-o", &temp_obj, "-"])
+        .stdin(Stdio::piped())
+        .spawn()?;
+
+    if let Some(mut stdin) = as_child.stdin.take() {
+        stdin.write_all(asm.as_bytes())?;
+    }
+
+    let as_status = as_child.wait()?;
+
+    if !as_status.success() {
+        std::fs::remove_file(&temp_obj).ok();
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Assembly failed",
+        ));
+    }
+
+    let ld_status = Command::new("ld")
+        .args(&["-o", &temp_bin, &temp_obj, "-s", "--nmagic"])
+        .status()?;
+
+    std::fs::remove_file(&temp_obj)?;
+
+    if !ld_status.success() {
+        std::fs::remove_file(&temp_bin).ok();
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Linking failed",
+        ));
+    }
+
+    let binary = std::fs::read(&temp_bin)?;
+    std::fs::remove_file(&temp_bin)?;
+
+    Ok(binary)
 }

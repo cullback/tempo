@@ -262,7 +262,7 @@ fn parse_block<'a>(
     pair: pest::iterators::Pair<'a, Rule>,
     span: Span<'a>,
 ) -> Result<Expression<'a>, Box<dyn std::error::Error>> {
-    let mut inner = pair.into_inner();
+    let inner = pair.into_inner();
     let mut assignments = Vec::new();
     let mut expression = None;
 

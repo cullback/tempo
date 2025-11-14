@@ -1,12 +1,11 @@
 pub mod codegen;
 pub mod elf;
 
-pub use elf::{assemble_and_link, compile, write_assembly};
+pub use elf::{assemble_and_link, assemble_and_link_to_bytes, compile};
 
 #[cfg(test)]
 mod tests {
     use crate::ast::*;
-    use crate::backend::ir::Program as IrProgram;
     use crate::ssa::{
         ModuleBuilder, STDOUT, SYS_EXIT, SYS_WRITE, Terminator, lower,
     };
