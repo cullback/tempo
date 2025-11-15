@@ -81,3 +81,11 @@ fn test_comparison() {
     assert_eq!(output.status.code(), Some(20));
     assert_eq!(binary.len(), 176);
 }
+
+#[test]
+fn test_many_vars() {
+    let binary = compile_example("many_vars");
+    let output = run_binary(&binary);
+
+    assert_eq!(output.status.code(), Some(55));
+}

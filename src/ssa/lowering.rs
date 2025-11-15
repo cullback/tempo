@@ -182,10 +182,22 @@ fn lower_blocks(
                 Instruction::BinOp(dest, op, left, right) => {
                     let left_reg = value_to_reg[left];
                     let right_reg = value_to_reg[right];
-                    let dest_reg = {
-                        let vreg = VReg(dest.0 as u32);
-                        allocator.allocate(vreg)
-                    };
+                    let dest_reg =
+                        if let Some(&pos) = syscall_positions.get(dest) {
+                            match pos {
+                                0 => ir::Register::X8,
+                                1 => ir::Register::X0,
+                                2 => ir::Register::X1,
+                                3 => ir::Register::X2,
+                                _ => {
+                                    let vreg = VReg(dest.0 as u32);
+                                    allocator.allocate(vreg)
+                                }
+                            }
+                        } else {
+                            let vreg = VReg(dest.0 as u32);
+                            allocator.allocate(vreg)
+                        };
 
                     match op {
                         crate::ssa::BinaryOp::Add => {

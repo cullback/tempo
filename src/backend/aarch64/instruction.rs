@@ -371,6 +371,13 @@ fn convert_register(reg: &crate::backend::ir::Register) -> Register {
         crate::backend::ir::Register::X6 => Register::X6,
         crate::backend::ir::Register::X7 => Register::X7,
         crate::backend::ir::Register::X8 => Register::X8,
+        crate::backend::ir::Register::X9 => Register::X9,
+        crate::backend::ir::Register::X10 => Register::X10,
+        crate::backend::ir::Register::X11 => Register::X11,
+        crate::backend::ir::Register::X12 => Register::X12,
+        crate::backend::ir::Register::X13 => Register::X13,
+        crate::backend::ir::Register::X14 => Register::X14,
+        crate::backend::ir::Register::X15 => Register::X15,
     }
 }
 

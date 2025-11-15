@@ -55,6 +55,13 @@ impl RegisterAllocator {
             Register::X5,
             Register::X6,
             Register::X7,
+            Register::X9,
+            Register::X10,
+            Register::X11,
+            Register::X12,
+            Register::X13,
+            Register::X14,
+            Register::X15,
         ];
 
         let start = self.next_register;
